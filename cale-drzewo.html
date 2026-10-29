@@ -65,14 +65,13 @@
     outline-offset: 3px;
   }
   .graph-frame {
-    overflow: auto;
-    max-height: min(78vh, 1000px);
-    min-height: 380px;
+    overflow-x: auto;
+    overflow-y: hidden;
     padding: 12px;
     background: var(--card);
     border: 1px solid var(--line);
     border-radius: 14px;
-    overscroll-behavior: contain;
+    overscroll-behavior-x: contain;
     scrollbar-color: #9aac9f #edf1ec;
   }
   #family-graph { display: block; }
@@ -83,6 +82,43 @@
   .person-node .person-year { fill: #62756a; font-size: 10px; font-weight: 400; }
   .marriage-year { fill: var(--action); font-size: 9px; font-weight: 700; }
   .union-node circle { fill: var(--action); stroke: var(--card); stroke-width: 2; }
+  .person-node { cursor: pointer; }
+  .person-node:hover rect, .person-node:focus rect { fill: #d5e4d8; stroke: #355b45; }
+  .person-node:focus { outline: none; }
+  .person-node.current rect { fill: var(--action); stroke: #264a36; }
+  .person-node.current text, .person-node.current .person-year { fill: white; }
+  #person-details { margin-top: 14px; }
+  .details-card {
+    padding: 16px 18px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+  .details-card h2 { margin: 0 0 4px; font: 600 20px/1.25 Georgia, serif; }
+  .details-card .hint { margin: 0; color: var(--muted); }
+  .details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .details-box { padding: 10px 12px; background: #f8f9f5; border: 1px solid #e6ebe5; border-radius: 10px; }
+  .details-box h3 { margin: 0 0 4px; color: var(--action); font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: .03em; }
+  .details-box p { margin: 2px 0; }
+  .person-link {
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    color: var(--action);
+    background: none;
+    border: 0;
+    font-size: inherit;
+    text-align: left;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .person-link:hover { color: var(--action-hover); background: none; }
+  .muted { color: var(--muted); font-size: 13px; }
   #status { color: var(--muted); }
   .error { color: #9c2f25 !important; }
   .page-footer {
@@ -110,13 +146,13 @@
     header { padding: 0 0 4mm; background: none; border: 0; }
     h1 { font-size: 20pt; }
     main { width: 100%; padding: 0; }
-    .toolbar, #status, .page-footer { display: none !important; }
+    .toolbar, #status, .page-footer, #person-details { display: none !important; }
     .graph-frame { overflow: visible; max-height: none; min-height: 0; padding: 0; border: 0; }
     #family-graph { width: 100%; height: auto; }
   }
   @media (max-width: 560px) {
     main { padding: 12px; }
-    .graph-frame { min-height: 300px; max-height: 68vh; padding: 8px; }
+    .graph-frame { padding: 8px; }
     .toolbar { align-items: flex-start; }
   }
 </style>
@@ -134,9 +170,10 @@
     </div>
   </div>
   <p id="status" role="status">Wczytywanie danych…</p>
-  <div class="graph-frame" tabindex="0" role="region" aria-label="Pełny graf rodziny, przewijany poziomo i pionowo">
+  <div class="graph-frame" tabindex="0" role="region" aria-label="Pełny graf rodziny, przewijany poziomo">
     <svg id="family-graph" role="img" aria-label="Pełny graf osób i rodzin"></svg>
   </div>
+  <section id="person-details" aria-live="polite"><div class="details-card"><p class="hint">Kliknij osobę na grafie, aby zobaczyć jej dane.</p></div></section>
 </main>
 <footer class="page-footer">
   <button id="print-tree" class="print-button" type="button">Drukuj</button>
@@ -153,15 +190,100 @@
   const status = document.getElementById("status");
   const printStyle = document.createElement("style");
   document.head.appendChild(printStyle);
+  const details = document.getElementById("person-details");
+  let data;
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, character => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    })[character]);
+  }
+
+  function personLink(person) {
+    return `<button class="person-link" type="button" data-person="${person.id}">${escapeHtml(person.name)}</button>`;
+  }
+
+  function dateLine(date, place) {
+    return date ? `${escapeHtml(date)}${place ? `, ${escapeHtml(place)}` : ""}` : "";
+  }
+
+  function box(title, content) {
+    return content ? `<div class="details-box"><h3>${title}</h3>${content}</div>` : "";
+  }
+
+  function renderDetails(person) {
+    const parentUnion = data.unions.get(person.parentUnionId);
+    const parents = parentUnion
+      ? parentUnion.partnerIds.map(id => `<p>${personLink(data.people.get(id))}</p>`).join("")
+      : person.parentsNote ? `<p>${escapeHtml(person.parentsNote)}</p>` : "";
+    const unions = person.unions.map(id => data.unions.get(id)).filter(Boolean);
+    const marriages = unions.map(union => {
+      const spouse = union.partnerIds.filter(id => id !== person.id).map(id => personLink(data.people.get(id))).join(", ");
+      const when = [union.marriageDate && `ślub ${escapeHtml(union.marriageDate)}`, union.marriagePlace && !union.marriageDate.includes(union.marriagePlace) && escapeHtml(union.marriagePlace)].filter(Boolean).join(", ");
+      return `<p>${spouse || "<span class=\"muted\">partner nieznany</span>"}${when ? `<br><span class="muted">${when}</span>` : ""}</p>`;
+    }).join("");
+    const children = unions.map(union => {
+      if (!union.childIds.length) return "";
+      const spouse = union.partnerIds.find(id => id !== person.id);
+      const heading = unions.length > 1 && spouse ? `<p class="muted">z ${escapeHtml(data.people.get(spouse).name)}:</p>` : "";
+      return heading + union.childIds.map(id => `<p>${personLink(data.people.get(id))}</p>`).join("");
+    }).join("");
+    const life = [
+      person.birth ? `<p>ur. ${dateLine(person.birth, person.birthPlace)}</p>` : "",
+      person.death ? `<p>zm. ${dateLine(person.death, person.deathPlace)}</p>` : ""
+    ].join("") || `<p class="muted">daty nieznane</p>`;
+    details.innerHTML = `<div class="details-card">
+      <h2>${escapeHtml(person.name)}</h2>
+      ${person.maiden ? `<p class="muted">z domu ${escapeHtml(person.maiden)}</p>` : ""}
+      <div class="details-grid">
+        ${box("Daty życia", life)}
+        ${box("Rodzice", parents)}
+        ${box(unions.length > 1 ? "Małżeństwa" : "Małżeństwo", marriages)}
+        ${box("Dzieci", children)}
+        ${box("Uwagi", person.note ? `<p>${escapeHtml(person.note)}</p>` : "")}
+      </div>
+    </div>`;
+    details.querySelectorAll("[data-person]").forEach(button => {
+      button.addEventListener("click", () => selectPerson(Number(button.dataset.person), "card"));
+    });
+  }
+
+  /* Zaznacza osobę na grafie i pokazuje jej dane; scrollTo: "details" po kliknięciu karty, "card" po kliknięciu odnośnika. */
+  function selectPerson(id, scrollTo) {
+    const person = data.people.get(id);
+    if (!person) return;
+    const cards = [...svg.querySelectorAll(".person-node")];
+    cards.forEach(card => card.classList.toggle("current", Number(card.dataset.person) === id));
+    renderDetails(person);
+    if (scrollTo === "details") details.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    if (scrollTo === "card") {
+      const card = cards.find(item => Number(item.dataset.person) === id);
+      if (card) card.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+    }
+  }
+
+  function makeSelectable(group, person) {
+    group.dataset.person = person.id;
+    group.setAttribute("tabindex", "0");
+    group.setAttribute("role", "button");
+    group.setAttribute("aria-label", `${person.name} — pokaż dane`);
+    group.addEventListener("click", () => selectPerson(person.id, "details"));
+    group.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        selectPerson(person.id, "details");
+      }
+    });
+  }
 
   async function loadGraph() {
     try {
-      const data = await DrzewoDB.load();
+      data = await DrzewoDB.load();
       if (!data.families.length) throw new Error("Baza danych nie zawiera żadnych związków.");
       const roots = data.families
         .filter(root => root.partners?.[0])
         .map(root => ({ person: root.partners[0], branches: [root] }));
-      const { width, height, firstRootCenter } = DrzewoUklad.render(svg, roots);
+      const { width, height, firstRootCenter } = DrzewoUklad.render(svg, roots, { onPerson: makeSelectable });
       // Strona PDF dopasowana proporcjami do grafu: cały graf na jednej stronie, w wektorze.
       const pageWidthMm = 420;
       const pageHeightMm = Math.ceil(pageWidthMm * (height + 90) / width) + 12;

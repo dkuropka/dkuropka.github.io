@@ -179,9 +179,9 @@
     border-color: var(--action-hover);
   }
   .map-scroll {
-    overflow: auto;
-    max-height: min(75vh, 900px);
-    overscroll-behavior: contain;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
     padding: 2px 2px 12px;
     scrollbar-color: #9aac9f #edf1ec;
   }
@@ -203,7 +203,9 @@
   .person-node:focus { outline: none; }
   .person-node:focus rect { stroke: #d59a50; stroke-width: 3; }
   .person-node.current rect { fill: #355b45; stroke: #264a36; }
-  .person-node.current text, .person-node.current .person-year { fill: white; }  .empty-note { color: var(--muted); font-size: 13px; }
+  .person-node.current text, .person-node.current .person-year { fill: white; }
+  .person-node.related rect { fill: #fbefdc; stroke: #d59a50; stroke-width: 3; stroke-dasharray: 6 3; }
+  .union-node.related circle { fill: #d59a50; stroke: #fffefa; }  .empty-note { color: var(--muted); font-size: 13px; }
   .unidentified { color: var(--muted); font-style: italic; }
   @media (max-width: 560px) {
     main { padding: 12px; }
@@ -327,9 +329,21 @@
     tree.innerHTML = `<article class="family-view"><div class="family-heading"><h2>${escapeHtml(title)}</h2>${family.marriage ? `<p>${escapeHtml(family.marriage)}${marriagePlace}</p>` : ""}</div><div class="family-body"><div class="couple">${partners.map((person, index) => personMarkup(person, partners.length === 2 ? partners[1 - index] : null)).join("")}</div>${children.length ? `<h3 class="children-heading">Dzieci (${children.length})</h3><div class="children">${children.map(child => childMarkup(child, partners)).join("")}</div>` : ""}</div></article>`;
     familySelect.value = id;
     tree.querySelectorAll("[data-family]").forEach(button => button.addEventListener("click", () => renderFamily(button.dataset.family)));
-    document.querySelectorAll("#ancestor-map [data-family]").forEach(node => {
+    highlightOnMap(id, entry.ancestors);
+  }
+
+  /* Rodzina z linii przodków: pełne zaznaczenie. Rodzina spoza linii: obwódka przodka z linii, od którego pochodzi. */
+  function highlightOnMap(id, ancestors = [], scroll = false) {
+    const nodes = [...document.querySelectorAll("#ancestor-map [data-family]")];
+    const onMap = familyId => nodes.some(node => node.dataset.family === familyId);
+    const related = onMap(id) ? "" : [...ancestors].reverse().find(onMap) || "";
+    nodes.forEach(node => {
       node.classList.toggle("current", node.dataset.family === id);
+      node.classList.toggle("related", node.dataset.family === related);
     });
+    if (!scroll) return;
+    const target = document.querySelector("#ancestor-map .union-node.current, #ancestor-map .union-node.related");
+    if (target) target.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
   }
 
   function renderAncestorMap() {
@@ -384,9 +398,8 @@
       onPerson: (group, person, family) => makeInteractive(group, family, person.name),
       onUnion: (group, family) => makeInteractive(group, family, family.marriage || "Małżeństwo")
     });
-    document.querySelectorAll("#ancestor-map [data-family]").forEach(node => {
-      node.classList.toggle("current", node.dataset.family === currentFamilyId);
-    });
+    const currentEntry = familyIndex.find(item => item.id === currentFamilyId);
+    highlightOnMap(currentFamilyId, currentEntry ? currentEntry.ancestors : []);
   }
   async function loadTree() {
     data = await DrzewoDB.load();
@@ -397,7 +410,11 @@
       const indentation = "\u00a0\u00a0".repeat(entry.ancestors.length);
       return `<option value="${entry.id}">${indentation}${escapeHtml(label)}</option>`;
     }).join("");
-    familySelect.addEventListener("change", () => renderFamily(familySelect.value));
+    familySelect.addEventListener("change", () => {
+      renderFamily(familySelect.value);
+      const entry = familyIndex.find(item => item.id === familySelect.value);
+      highlightOnMap(familySelect.value, entry ? entry.ancestors : [], true);
+    });
     const mapScroll = document.querySelector(".map-scroll");
     document.getElementById("map-left").addEventListener("click", () => mapScroll.scrollBy({ left: -Math.max(240, mapScroll.clientWidth * 0.75), behavior: "smooth" }));
     document.getElementById("map-right").addEventListener("click", () => mapScroll.scrollBy({ left: Math.max(240, mapScroll.clientWidth * 0.75), behavior: "smooth" }));
