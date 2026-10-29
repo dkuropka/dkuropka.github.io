@@ -130,7 +130,15 @@
     margin: 0 auto;
     padding: 0 18px 12px;
   }
+  .footer-actions { display: flex; flex-wrap: wrap; gap: 8px; }
   .print-button {
+    display: inline-block;
+    border: 1px solid;
+    border-radius: 9px;
+    font-family: inherit;
+    line-height: 1.2;
+    text-decoration: none;
+    cursor: pointer;
     min-height: 0;
     padding: 7px 14px;
     color: white;
@@ -176,7 +184,10 @@
   <section id="person-details" aria-live="polite"><div class="details-card"><p class="hint">Kliknij osobę na grafie, aby zobaczyć jej dane.</p></div></section>
 </main>
 <footer class="page-footer">
-  <button id="print-tree" class="print-button" type="button">Drukuj</button>
+  <nav class="footer-actions" aria-label="Dodatkowe widoki">
+    <a class="print-button" href="./dokumenty.html">Dokumenty</a>
+    <button id="print-tree" class="print-button" type="button">Drukuj</button>
+  </nav>
   <small class="copyright"><a href="mailto:dkuropka@gmail.com">©Dominik Kuropka</a></small>
 </footer>
 <script src="./lib/sql-wasm.js"></script>
