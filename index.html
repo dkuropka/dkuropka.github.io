@@ -179,32 +179,31 @@
     border-color: var(--action-hover);
   }
   .map-scroll {
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
+    overflow: auto;
+    max-height: min(75vh, 900px);
+    overscroll-behavior: contain;
     padding: 2px 2px 12px;
     scrollbar-color: #9aac9f #edf1ec;
   }
-  #ancestor-map { display: block; width: 2200px; height: 430px; }
-  .map-edge { fill: none; stroke: #b9c7bd; stroke-width: 2; }
-  .marriage-edge { fill: none; stroke: #718e79; stroke-width: 2.5; }
-  .marriage-label rect { fill: #fffefa; stroke: #c4d2c6; stroke-width: 1; rx: 5; }
-  .marriage-label text { fill: #355b45; font: 700 10px system-ui, "Segoe UI", sans-serif; text-anchor: middle; }
+  #ancestor-map { display: block; }
+  #ancestor-map .edge { fill: none; stroke: #9fb4a5; stroke-width: 1.8; }
+  #ancestor-map .marriage-edge { fill: none; stroke: #718e79; stroke-width: 2.4; }
+  #ancestor-map .marriage-year { fill: #355b45; font: 700 9px system-ui, "Segoe UI", sans-serif; }
   .union-node circle { fill: #355b45; stroke: #fffefa; stroke-width: 2; }
   .union-node.current circle { fill: #d59a50; stroke: #264a36; }
   .union-node:focus { outline: none; }
   .union-node:focus circle { stroke: #d59a50; stroke-width: 4; }
-  .map-node { cursor: pointer; }
-  .map-node rect { fill: #e1ebe2; stroke: #adc2b1; stroke-width: 1.5; rx: 9; }
-  .map-node text { fill: #284936; font: 600 12px system-ui, "Segoe UI", sans-serif; text-anchor: middle; }
-  .map-node .map-year { fill: #62756a; font: 11px system-ui, "Segoe UI", sans-serif; }
-  .map-node:hover rect, .map-node:focus rect { fill: #355b45; stroke: #264a36; }
-  .map-node:hover text, .map-node:focus text { fill: white; }
-  .map-node:hover .map-year, .map-node:focus .map-year { fill: #e2eee4; }
-  .map-node:focus { outline: none; }
-  .map-node:focus rect { stroke: #d59a50; stroke-width: 3; }
-  .map-node.current rect { fill: #355b45; stroke: #264a36; }
-  .map-node.current text, .map-node.current .map-year { fill: white; }
-  .empty-note { color: var(--muted); font-size: 13px; }
+  .map-link { cursor: pointer; }
+  .person-node rect { fill: #e1ebe2; stroke: #adc2b1; stroke-width: 1.5; }
+  .person-node text { fill: #284936; font: 600 11px system-ui, "Segoe UI", sans-serif; text-anchor: middle; }
+  .person-node .person-year { fill: #62756a; font: 10px system-ui, "Segoe UI", sans-serif; }
+  .person-node.map-link:hover rect, .person-node:focus rect { fill: #355b45; stroke: #264a36; }
+  .person-node.map-link:hover text, .person-node:focus text { fill: white; }
+  .person-node.map-link:hover .person-year, .person-node:focus .person-year { fill: #e2eee4; }
+  .person-node:focus { outline: none; }
+  .person-node:focus rect { stroke: #d59a50; stroke-width: 3; }
+  .person-node.current rect { fill: #355b45; stroke: #264a36; }
+  .person-node.current text, .person-node.current .person-year { fill: white; }  .empty-note { color: var(--muted); font-size: 13px; }
   .unidentified { color: var(--muted); font-style: italic; }
   @media (max-width: 560px) {
     main { padding: 12px; }
@@ -230,7 +229,7 @@
       <button id="map-right" type="button" aria-label="Przewiń graf w prawo" title="Przewiń w prawo">→</button>
     </div>
     <div class="map-scroll" tabindex="0" role="region" aria-label="Graf przodków">
-      <svg id="ancestor-map" viewBox="0 0 2200 430" role="img" aria-label="Graf nawigacyjny od Dominika Kuropki do Balthasara Kuropki"></svg>
+      <svg id="ancestor-map" role="img" aria-label="Graf przodków"></svg>
     </div>
   </section>
   <section id="tree" aria-label="Wybrana rodzina"></section>
@@ -244,6 +243,7 @@
 </footer>
 <script src="./lib/sql-wasm.js"></script>
 <script src="./drzewo-db.js"></script>
+<script src="./drzewo-uklad.js"></script>
 <script>
   "use strict";
 
@@ -334,161 +334,60 @@
 
   function renderAncestorMap() {
     const svg = document.getElementById("ancestor-map");
-    const namespace = "http://www.w3.org/2000/svg";
-    const yearOf = union => (union.marriageDate.match(/\d{4}/) || [""])[0];
-    const toCard = person => [DrzewoDB.shortName(person), person.birth || "?", person.death || ""];
-    const generations = data.ancestorLine.map(generation => ({
-      family: generation.union.title,
-      unionId: generation.union.id,
-      marriageYear: yearOf(generation.union),
-      people: [toCard(generation.person), generation.spouse ? toCard(generation.spouse) : null],
-      otherSpouses: generation.otherUnions.slice(0, 2).map((union, index, list) => {
-        const spouseId = union.partnerIds.find(id => id !== generation.person.id);
-        return {
-          family: union.title,
-          unionId: union.id,
-          marriageYear: yearOf(union),
-          person: spouseId ? toCard(data.people.get(spouseId)) : ["?", "?", ""],
-          position: list.length > 1 && index === 0 ? "top" : "bottom"
-        };
-      })
-    }));
-    const x0 = 18;
-    const step = 250;
-    const topY = 115;
-    const bottomY = 245;
-    const otherSpouseY = { top: 5, bottom: 355 };
-    const boxWidth = 142;
-    const boxHeight = 48;
-    const unionY = 205;
-    const mapWidth = Math.max(x0 * 2 + boxWidth, x0 + (generations.length - 1) * step + boxWidth + 70);
-    svg.setAttribute("viewBox", `0 0 ${mapWidth} 430`);
-    svg.style.width = `${mapWidth}px`;
     const line = data.ancestorLine;
-    if (line.length) svg.setAttribute("aria-label", `Graf nawigacyjny od ${DrzewoDB.shortName(line[0].person)} do ${DrzewoDB.shortName(line[line.length - 1].person)}`);
+    if (!line.length) return;
+    svg.setAttribute("aria-label", `Graf przodków od ${DrzewoDB.shortName(line[line.length - 1].person)} do ${DrzewoDB.shortName(line[0].person)}`);
 
-    function makeSvgElement(name, attributes) {
-      const element = document.createElementNS(namespace, name);
-      Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value));
-      return element;
-    }
+    // Tylko linia przodków: główny związek ma jako dziecko następną osobę z linii, inne związki bez dzieci.
+    const branchesByPerson = new Map();
+    line.forEach((generation, index) => {
+      const real = data.familyByUnionId.get(generation.union.id);
+      const next = line[index - 1];
+      const main = {
+        ...real,
+        partners: [generation.person, generation.spouse].filter(Boolean),
+        children: next ? [next.person] : []
+      };
+      const others = generation.otherUnions
+        .map(union => data.familyByUnionId.get(union.id))
+        .filter(Boolean)
+        .map(family => ({ ...family, children: [] }));
+      branchesByPerson.set(generation.person, [main, ...others]);
+    });
 
-    function getFamilyId(unionId) {
-      const entry = familyIndex.find(item => item.family.unionId === unionId);
+    function getFamilyId(family) {
+      const entry = family && familyIndex.find(item => item.family.unionId === family.unionId);
       return entry ? entry.id : "";
     }
 
-    function drawMarriageLabel(x, y, year) {
-      const label = makeSvgElement("g", { class: "marriage-label" });
-      label.appendChild(makeSvgElement("rect", {
-        x: x - 30, y: y - 10, width: 60, height: 20
-      }));
-      const text = makeSvgElement("text", { x, y: y + 3.5 });
-      text.textContent = year ? `ślub ${year}` : "rok ?";
-      label.appendChild(text);
-      svg.appendChild(label);
-    }
-
-    function drawUnion(x, y, ref, year, labelPosition) {
-      const group = makeSvgElement("g", {
-        class: "union-node",
-        tabindex: "0",
-        role: "button",
-        "aria-label": `Małżeństwo, ${year ? `ślub ${year}` : "data nieznana"}. Otwórz rodzinę ${ref.family}`,
-        "data-family": getFamilyId(ref.unionId)
-      });
-      group.appendChild(makeSvgElement("circle", { cx: x, cy: y, r: 8 }));
-      group.addEventListener("click", () => renderFamily(group.dataset.family));
+    function makeInteractive(group, family, label) {
+      const familyId = getFamilyId(family);
+      if (!familyId) return;
+      group.classList.add("map-link");
+      group.dataset.family = familyId;
+      group.setAttribute("tabindex", "0");
+      group.setAttribute("role", "button");
+      group.setAttribute("aria-label", `${label}. Otwórz rodzinę ${family.name || ""}`);
+      group.addEventListener("click", () => renderFamily(familyId));
       group.addEventListener("keydown", event => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          renderFamily(group.dataset.family);
-        }
-      });
-      svg.appendChild(group);
-      drawMarriageLabel(labelPosition ? labelPosition.x : x, labelPosition ? labelPosition.y : y - 16, year);
-    }
-
-    function drawPerson(person, ref, x, y, extraClass) {
-      const group = makeSvgElement("g", {
-        class: `map-node${extraClass ? ` ${extraClass}` : ""}`,
-        tabindex: "0",
-        role: "button",
-        "aria-label": `${person[0]}, urodzenie ${person[1]}. Otwórz rodzinę ${ref.family}`,
-        "data-family": getFamilyId(ref.unionId)
-      });
-      const center = x + boxWidth / 2;
-      group.appendChild(makeSvgElement("rect", { x, y, width: boxWidth, height: boxHeight }));
-      const label = makeSvgElement("text", { x: center, y: y + 19 });
-      label.textContent = person[0];
-      group.appendChild(label);
-      const year = makeSvgElement("text", { x: center, y: y + 37, class: "map-year" });
-      year.textContent = `ur. ${birthYear(person[1])}${person[2] ? ` · zm. ${birthYear(person[2])}` : ""}`;
-      group.appendChild(year);
-      group.addEventListener("click", () => renderFamily(group.dataset.family));
-      group.addEventListener("keydown", event => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          renderFamily(group.dataset.family);
-        }
-      });
-      svg.appendChild(group);
-      group.querySelectorAll("text").forEach(text => {
-        if (text.getComputedTextLength() > boxWidth - 10) {
-          text.setAttribute("textLength", boxWidth - 10);
-          text.setAttribute("lengthAdjust", "spacingAndGlyphs");
+          renderFamily(familyId);
         }
       });
     }
 
-    generations.forEach((generation, index) => {
-      const x = x0 + index * step;
-      const center = x + boxWidth / 2;
-      if (index > 0) {
-        const childX = x0 + (index - 1) * step;
-        const childCenterY = topY + boxHeight / 2;
-        const turnX = childX + (step + boxWidth) / 2;
-        svg.appendChild(makeSvgElement("path", {
-          d: `M ${center} ${unionY} L ${turnX} ${unionY} L ${turnX} ${childCenterY} L ${childX + boxWidth} ${childCenterY}`,
-          class: "map-edge"
-        }));
-      }
-      svg.appendChild(makeSvgElement("path", {
-        d: `M ${center} ${topY + boxHeight} L ${center} ${unionY} L ${center} ${bottomY}`,
-        class: "marriage-edge"
-      }));
-      drawPerson(generation.people[0], generation, x, topY);
-      if (generation.people[1]) drawPerson(generation.people[1], generation, x, bottomY);
-      drawUnion(center, unionY, generation, generation.marriageYear);
-
-      (generation.otherSpouses || []).forEach(other => {
-        const spouseY = otherSpouseY[other.position || "top"];
-        const spouseCenterY = spouseY + boxHeight / 2;
-        const sideUnionX = other.position === "top" ? x + boxWidth + 27 : center + 98;
-        const sideUnionY = other.position === "top" ? 84 : 320;
-        if (spouseY < topY) {
-          svg.appendChild(makeSvgElement("path", {
-            d: `M ${x + boxWidth} ${spouseCenterY} L ${sideUnionX} ${spouseCenterY} L ${sideUnionX} ${topY + boxHeight / 2} L ${x + boxWidth} ${topY + boxHeight / 2}`,
-            class: "marriage-edge"
-          }));
-        } else {
-          svg.appendChild(makeSvgElement("path", {
-            d: `M ${x + boxWidth} ${topY + boxHeight / 2} L ${sideUnionX} ${topY + boxHeight / 2} L ${sideUnionX} ${spouseCenterY} L ${x + boxWidth} ${spouseCenterY}`,
-            class: "marriage-edge"
-          }));
-        }
-        drawPerson(other.person, other, x, spouseY);
-        drawUnion(
-          sideUnionX,
-          sideUnionY,
-          other,
-          other.marriageYear,
-          other.position === "top" ? { x: sideUnionX + 40, y: sideUnionY } : null
-        );
-      });
+    const top = line[line.length - 1];
+    DrzewoUklad.render(svg, [{ person: top.person, branches: branchesByPerson.get(top.person) }], {
+      branchesOf: person => branchesByPerson.get(person) || [],
+      childrenUnderPerson: true,
+      onPerson: (group, person, family) => makeInteractive(group, family, person.name),
+      onUnion: (group, family) => makeInteractive(group, family, family.marriage || "Małżeństwo")
+    });
+    document.querySelectorAll("#ancestor-map [data-family]").forEach(node => {
+      node.classList.toggle("current", node.dataset.family === currentFamilyId);
     });
   }
-
   async function loadTree() {
     data = await DrzewoDB.load();
     if (!data.families.length) throw new Error("Baza danych nie zawiera żadnych związków.");
