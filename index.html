@@ -54,19 +54,9 @@
     outline-offset: 3px;
   }
   .navigator {
-    display: grid;
-    grid-template-columns: 36px minmax(0, 1fr) 36px;
-    gap: 8px;
-    align-items: center;
+    display: block;
     margin-bottom: 12px;
   }
-  .navigator button {
-    min-height: 36px;
-    padding: 4px;
-    font-size: 19px;
-    line-height: 1;
-  }
-  .navigator button:disabled { cursor: default; opacity: .45; }
   select { width: 100%; }
   .family-view {
     min-width: 0;
@@ -141,6 +131,19 @@
     border-radius: 16px;
   }
   .family-map h2 { margin: 0; font: 600 19px/1.3 Georgia, serif; }
+  .map-controls {
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+    margin: 8px 0 4px;
+  }
+  .map-controls button {
+    min-width: 38px;
+    min-height: 34px;
+    padding: 3px 8px;
+    font-size: 18px;
+    line-height: 1;
+  }
   .copyright {
     padding: 12px 18px;
     color: var(--muted);
@@ -149,6 +152,30 @@
   }
   .copyright a { color: inherit; text-decoration: none; }
   .copyright a:hover, .copyright a:focus-visible { color: var(--action); text-decoration: underline; }
+  .page-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: min(1050px, 100%);
+    margin: 0 auto;
+    padding: 0 18px 12px;
+  }
+  .documents-button {
+    display: inline-block;
+    padding: 7px 12px;
+    color: white;
+    background: var(--action);
+    border: 1px solid var(--action);
+    border-radius: 9px;
+    font-size: 13px;
+    text-decoration: none;
+  }
+  .documents-button:hover, .documents-button:focus-visible {
+    color: white;
+    background: var(--action-hover);
+    border-color: var(--action-hover);
+  }
   .map-scroll {
     overflow-x: auto;
     overscroll-behavior-x: contain;
@@ -179,9 +206,6 @@
   .unidentified { color: var(--muted); font-style: italic; }
   @media (max-width: 560px) {
     main { padding: 12px; }
-    .navigator { grid-template-columns: 36px minmax(0, 1fr) 36px; gap: 6px; }
-    .navigator button { min-height: 38px; }
-    .navigator select { min-width: 0; padding: 7px 8px; }
     .family-heading { padding: 15px 14px 10px; }
     .family-heading h2 { font-size: 19px; }
     .family-body { padding: 0 12px 12px; }
@@ -195,19 +219,24 @@
 </header>
 <main>
   <div class="navigator" aria-label="Nawigacja po rodzinach">
-    <button id="previous-family" type="button" aria-label="Poprzednia rodzina" title="Poprzednia rodzina">←</button>
     <select id="family-select" aria-label="Wybierz rodzinę"></select>
-    <button id="next-family" type="button" aria-label="Następna rodzina" title="Następna rodzina">→</button>
   </div>
   <section class="family-map" aria-labelledby="map-title">
     <h2 id="map-title">Przodkowie</h2>
+    <div class="map-controls" aria-label="Przewijanie grafu">
+      <button id="map-left" type="button" aria-label="Przewiń graf w lewo" title="Przewiń w lewo">←</button>
+      <button id="map-right" type="button" aria-label="Przewiń graf w prawo" title="Przewiń w prawo">→</button>
+    </div>
     <div class="map-scroll" tabindex="0" role="region" aria-label="Graf przodków">
       <svg id="ancestor-map" viewBox="0 0 2200 430" role="img" aria-label="Graf nawigacyjny od Dominika Kuropki do Balthasara Kuropki"></svg>
     </div>
   </section>
   <section id="tree" aria-label="Wybrana rodzina"></section>
 </main>
-<footer class="copyright"><a href="mailto:dkuropka@gmail.com">©Dominik Kuropka</a></footer>
+<footer class="page-footer">
+  <a class="documents-button" href="./dokumenty.html">Dokumenty</a>
+  <small class="copyright"><a href="mailto:dkuropka@gmail.com">©Dominik Kuropka</a></small>
+</footer>
 <script>
   "use strict";
 
@@ -326,9 +355,6 @@
     const marriagePlace = family.marriagePlace && !family.marriage?.includes(family.marriagePlace) ? ` · ${escapeHtml(family.marriagePlace)}` : "";
     tree.innerHTML = `<article class="family-view"><div class="family-heading"><h2>${escapeHtml(title)}</h2>${family.marriage ? `<p>${escapeHtml(family.marriage)}${marriagePlace}</p>` : ""}</div><div class="family-body"><div class="couple">${partners.map((person, index) => personMarkup(person, partners.length === 2 ? partners[1 - index] : null)).join("")}</div>${children.length ? `<h3 class="children-heading">Dzieci (${children.length})</h3><div class="children">${children.map(child => childMarkup(child, partners)).join("")}</div>` : ""}</div></article>`;
     familySelect.value = id;
-    const familyPosition = familyIndex.findIndex(item => item.id === id);
-    document.getElementById("previous-family").disabled = familyPosition <= 0;
-    document.getElementById("next-family").disabled = familyPosition >= familyIndex.length - 1;
     tree.querySelectorAll("[data-family]").forEach(button => button.addEventListener("click", () => renderFamily(button.dataset.family)));
     document.querySelectorAll("#ancestor-map [data-family]").forEach(node => {
       node.classList.toggle("current", node.dataset.family === id);
@@ -486,17 +512,13 @@
     indexParents();
     familySelect.innerHTML = familyIndex.map(entry => {
       const label = entry.family.name || entry.family.partners.map(person => person.name).join(" i ");
-      return `<option value="${entry.id}">${escapeHtml(label)}</option>`;
+      const indentation = "\u00a0\u00a0".repeat(entry.ancestors.length);
+      return `<option value="${entry.id}">${indentation}${escapeHtml(label)}</option>`;
     }).join("");
     familySelect.addEventListener("change", () => renderFamily(familySelect.value));
-    document.getElementById("previous-family").addEventListener("click", () => {
-      const currentPosition = familyIndex.findIndex(entry => entry.id === currentFamilyId);
-      if (currentPosition > 0) renderFamily(familyIndex[currentPosition - 1].id);
-    });
-    document.getElementById("next-family").addEventListener("click", () => {
-      const currentPosition = familyIndex.findIndex(entry => entry.id === currentFamilyId);
-      if (currentPosition < familyIndex.length - 1) renderFamily(familyIndex[currentPosition + 1].id);
-    });
+    const mapScroll = document.querySelector(".map-scroll");
+    document.getElementById("map-left").addEventListener("click", () => mapScroll.scrollBy({ left: -Math.max(240, mapScroll.clientWidth * 0.75), behavior: "smooth" }));
+    document.getElementById("map-right").addEventListener("click", () => mapScroll.scrollBy({ left: Math.max(240, mapScroll.clientWidth * 0.75), behavior: "smooth" }));
     renderFamily(familyIndex[0].id);
     renderAncestorMap();
   }
