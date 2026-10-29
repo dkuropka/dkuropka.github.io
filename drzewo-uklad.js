@@ -1,10 +1,13 @@
 /* Wspólny układ grafu rodziny: pokolenia z góry na dół, kompaktowe karty osób.
-   Użycie: DrzewoUklad.render(svg, [{ person, branches }], { branchesOf, onPerson, onUnion, childrenUnderPerson }). */
+   Użycie: DrzewoUklad.render(svg, [{ person, branches }], { branchesOf, onPerson, onUnion, childrenUnderPerson, compact, cardWidth }).
+   compact: tylko pierwsze imię, bez nazwiska rodowego i tylko pierwszy rok przy datach alternatywnych. */
 (function () {
   "use strict";
 
   const svgNamespace = "http://www.w3.org/2000/svg";
-  const cardWidth = 112;
+  const defaultCardWidth = 112;
+  let cardWidth = defaultCardWidth;
+  let compact = false;
   const cardHeight = 52;
   const coupleGap = 30;
   const siblingGap = 14;
@@ -19,11 +22,11 @@
     return element;
   }
 
-  function yearText(value) {
+  function yearText(value, firstOnly = compact) {
     const raw = String(value || "");
     const years = [...new Set(raw.match(/\d{4}/g) || [])];
     if (!years.length) return "";
-    return `${/ok\.|\?/.test(raw) ? "~" : ""}${years.join("–")}`;
+    return `${/ok\.|\?/.test(raw) ? "~" : ""}${firstOnly ? years[0] : years.join("–")}`;
   }
 
   function nameLines(person) {
@@ -35,6 +38,7 @@
     const given = variants.length > 1
       ? variants[0].split(/\s+/)[0]
       : core.slice(0, -1).join(" ");
+    if (compact) return [given.split(/\s+/)[0], surname];
     const maiden = person.maiden && !surname.includes(person.maiden) ? ` z d. ${person.maiden}` : "";
     return [given, surname + maiden];
   }
@@ -119,6 +123,8 @@
 
   function render(svg, roots, options = {}) {
     const branchesOf = options.branchesOf || defaultBranchesOf;
+    compact = Boolean(options.compact);
+    cardWidth = options.cardWidth || defaultCardWidth;
     let maxRight = 0;
     let maxBottom = 0;
 
@@ -146,7 +152,7 @@
       [
         [given, 16, "person-name"],
         [surname, 30, "person-name"],
-        [years.join("  "), 45, "person-year"]
+        [years.join(compact ? " " : "  "), 45, "person-year"]
       ].forEach(([content, dy, cls]) => {
         if (!content) return;
         const text = makeSvgElement("text", { x: centerX, y: y + dy, class: cls });

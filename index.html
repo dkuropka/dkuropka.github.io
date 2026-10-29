@@ -130,7 +130,6 @@
     border: 1px solid var(--line);
     border-radius: 16px;
   }
-  .family-map h2 { margin: 0 0 10px; font: 600 19px/1.3 Georgia, serif; }
   .family-map h3 { margin: 18px 0 6px; font: 600 16px/1.3 Georgia, serif; }
   .copyright {
     padding: 12px 18px;
@@ -150,15 +149,39 @@
     padding: 0 18px 12px;
   }
   .footer-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-  .documents-button {
+  .footer-button {
     display: inline-block;
+    min-height: 0;
     padding: 7px 12px;
     color: white;
     background: var(--action);
     border: 1px solid var(--action);
     border-radius: 9px;
+    font: inherit;
     font-size: 13px;
+    line-height: 1.5;
     text-decoration: none;
+    cursor: pointer;
+  }
+  .footer-button:hover, .footer-button:focus-visible { color: white; background: var(--action-hover); border-color: var(--action-hover); }
+  .header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 18px;
+  }
+  .documents-button {
+    display: inline-block;
+    padding: 10px 22px;
+    color: white;
+    background: var(--action);
+    border: 1px solid var(--action);
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: 0 2px 6px rgba(38, 74, 54, .18);
   }
   .documents-button:hover, .documents-button:focus-visible {
     color: white;
@@ -194,6 +217,20 @@
   .person-node.related rect { fill: #fbefdc; stroke: #d59a50; stroke-width: 3; stroke-dasharray: 6 3; }
   .union-node.related circle { fill: #d59a50; stroke: #fffefa; }  .empty-note { color: var(--muted); font-size: 13px; }
   .unidentified { color: var(--muted); font-style: italic; }
+  @media print {
+    @page { size: A4 portrait; margin: 10mm; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { background: white; }
+    header { padding: 0 0 4mm; background: none; border: 0; }
+    h1 { font-size: 22pt; }
+    main { width: 100%; padding: 0; }
+    .header-actions, .navigator, .page-footer, .family-link { display: none !important; }
+    .family-map { margin: 0; padding: 0; border: 0; break-after: page; }
+    .map-scroll { overflow: visible; padding: 0; }
+    #ancestor-map { width: 100%; height: 245mm; margin: 0 auto; }
+    .family-view { border: 0; box-shadow: none; }
+    .person, .child { break-inside: avoid; }
+  }
   @media (max-width: 560px) {
     main { padding: 12px; }
     .family-heading { padding: 15px 14px 10px; }
@@ -206,13 +243,15 @@
 <body>
 <header>
   <h1>Rodzina Kuropków</h1>
+  <nav class="header-actions" aria-label="Przejście do innego widoku">
+    <a class="documents-button" href="./cale-drzewo.html">Całe drzewo</a>
+  </nav>
 </header>
 <main>
   <div class="navigator" aria-label="Nawigacja po rodzinach">
     <select id="family-select" aria-label="Wybierz rodzinę"></select>
   </div>
-  <section class="family-map" aria-labelledby="map-title">
-    <h2 id="map-title">Przodkowie</h2>
+  <section class="family-map" aria-label="Graf przodków">
     <div class="map-scroll" tabindex="0" role="region" aria-label="Graf przodków">
       <svg id="ancestor-map" role="img" aria-label="Graf przodków"></svg>
     </div>
@@ -220,15 +259,15 @@
   <section id="tree" aria-label="Wybrana rodzina"></section>
 </main>
 <footer class="page-footer">
-  <nav class="footer-actions" aria-label="Dodatkowe widoki">
-    <a class="documents-button" href="./dokumenty.html">Dokumenty</a>
-    <a class="documents-button" href="./cale-drzewo.html">Całe drzewo</a>
+  <nav class="footer-actions" aria-label="Dodatkowe funkcje">
+    <a class="footer-button" href="./dokumenty.html">Dokumenty</a>
+    <button class="footer-button" type="button" onclick="window.print()">Drukuj</button>
   </nav>
-  <small class="copyright"><a href="mailto:dkuropka@gmail.com">©Dominik Kuropka</a></small>
+  <small class="copyright"><a href="mailto:dkuropka@gmail.com">©Dominik</a></small>
 </footer>
 <script src="./lib/sql-wasm.js"></script>
 <script src="./drzewo-db.js"></script>
-<script src="./drzewo-uklad.js"></script>
+<script src="./drzewo-uklad.js?v=2"></script>
 <script>
   "use strict";
 
