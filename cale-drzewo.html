@@ -31,7 +31,6 @@
     border-bottom: 1px solid var(--line);
   }
   h1 { margin: 0; font: 600 clamp(25px, 4vw, 38px)/1.15 Georgia, serif; }
-  .subtitle { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
   main { width: min(1200px, 100%); margin: 0 auto; padding: 18px; }
   .toolbar {
     display: flex;
@@ -65,18 +64,9 @@
     outline: 3px solid #d59a50;
     outline-offset: 3px;
   }
-  .legend {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 18px;
-    margin: 0 0 10px;
-    color: var(--muted);
-    font-size: 12px;
-  }
-  .legend strong { color: var(--ink); }
   .graph-frame {
     overflow: auto;
-    max-height: min(72vh, 900px);
+    max-height: min(78vh, 1000px);
     min-height: 380px;
     padding: 12px;
     background: var(--card);
@@ -89,11 +79,10 @@
   .edge { fill: none; stroke: var(--edge); stroke-width: 1.8; }
   .marriage-edge { fill: none; stroke: #718e79; stroke-width: 2.4; }
   .person-node rect { fill: #eaf1e9; stroke: #a9bfad; stroke-width: 1.4; rx: 9; }
-  .person-node text { fill: #284936; text-anchor: middle; font-weight: 600; }
+  .person-node text { fill: #284936; text-anchor: middle; font-size: 11px; font-weight: 600; }
   .person-node .person-year { fill: #62756a; font-size: 10px; font-weight: 400; }
+  .marriage-year { fill: var(--action); font-size: 9px; font-weight: 700; }
   .union-node circle { fill: var(--action); stroke: var(--card); stroke-width: 2; }
-  .marriage-label rect { fill: var(--card); stroke: #c4d2c6; rx: 5; }
-  .marriage-label text { fill: var(--action); font-size: 9px; font-weight: 700; text-anchor: middle; }
   #status { color: var(--muted); }
   .error { color: #9c2f25 !important; }
   footer {
@@ -139,12 +128,16 @@
   const frame = document.querySelector(".graph-frame");
   const status = document.getElementById("status");
   const svgNamespace = "http://www.w3.org/2000/svg";
-  const cardWidth = 154;
-  const cardHeight = 50;
-  const rowGap = 14;
-  const branchGap = 12;
-  const topPadding = 32;
+  const cardWidth = 112;
+  const cardHeight = 52;
+  const coupleGap = 30;
+  const siblingGap = 14;
+  const rootGap = 48;
+  const levelGap = 62;
+  const rowHeight = cardHeight + levelGap;
+  const padding = 24;
   let maxRight = 0;
+  let maxBottom = 0;
 
   function makeSvgElement(name, attributes) {
     const element = document.createElementNS(svgNamespace, name);
@@ -152,171 +145,206 @@
     return element;
   }
 
-  function birthYear(value) {
-    const years = [...new Set(String(value || "").match(/\d{4}/g) || [])];
-    return years.length ? years.join("–") : String(value || "");
+  function edge(d, cls = "edge") {
+    svg.appendChild(makeSvgElement("path", { d, class: cls }));
+  }
+
+  function yearText(value) {
+    const raw = String(value || "");
+    const years = [...new Set(raw.match(/\d{4}/g) || [])];
+    if (!years.length) return "";
+    return `${/ok\.|\?/.test(raw) ? "~" : ""}${years.join("–")}`;
+  }
+
+  function nameLines(person) {
+    const variants = person.name.split("/").map(part => part.trim());
+    const core = person.name.replace(/\([^)]*\)/g, " ").trim().split(/\s+/);
+    const nickname = (person.name.match(/\(([^)]*)\)/) || [])[1];
+    if (core.length < 2) return [core[0] || person.name, nickname ? `(${nickname})` : ""];
+    const surname = core[core.length - 1];
+    const given = variants.length > 1
+      ? variants[0].split(/\s+/)[0]
+      : core.slice(0, -1).join(" ");
+    const maiden = person.maiden && !surname.includes(person.maiden) ? ` z d. ${person.maiden}` : "";
+    return [given, surname + maiden];
+  }
+
+  function fitText(text, maxWidth) {
+    if (text.getComputedTextLength() > maxWidth) {
+      text.setAttribute("textLength", maxWidth);
+      text.setAttribute("lengthAdjust", "spacingAndGlyphs");
+    }
+  }
+
+  function drawPerson(person, x, y) {
+    const group = makeSvgElement("g", { class: "person-node" });
+    const title = makeSvgElement("title", {});
+    title.textContent = [
+      person.name + (person.maiden ? ` (z d. ${person.maiden})` : ""),
+      person.birth ? `ur. ${person.birth}${person.birthPlace ? `, ${person.birthPlace}` : ""}` : "",
+      person.death ? `zm. ${person.death}${person.deathPlace ? `, ${person.deathPlace}` : ""}` : ""
+    ].filter(Boolean).join(" · ");
+    group.appendChild(title);
+    group.appendChild(makeSvgElement("rect", { x, y, width: cardWidth, height: cardHeight }));
+    svg.appendChild(group);
+
+    const centerX = x + cardWidth / 2;
+    const [given, surname] = nameLines(person);
+    const years = [];
+    if (person.birth) years.push(`* ${yearText(person.birth)}`);
+    if (person.death) years.push(`† ${yearText(person.death)}`);
+    [
+      [given, 16, "person-name"],
+      [surname, 30, "person-name"],
+      [years.join("  "), 45, "person-year"]
+    ].forEach(([content, dy, cls]) => {
+      if (!content) return;
+      const text = makeSvgElement("text", { x: centerX, y: y + dy, class: cls });
+      text.textContent = content;
+      group.appendChild(text);
+      fitText(text, cardWidth - 10);
+    });
+    maxRight = Math.max(maxRight, x + cardWidth);
+    maxBottom = Math.max(maxBottom, y + cardHeight);
+  }
+
+  function drawUnion(family, x, y) {
+    const year = family.marriage?.match(/\d{4}/)?.[0] || "";
+    const node = makeSvgElement("g", { class: "union-node" });
+    const title = makeSvgElement("title", {});
+    title.textContent = `${family.name || "Małżeństwo"}${family.marriage ? ` · ${family.marriage}` : ""}`;
+    node.appendChild(title);
+    node.appendChild(makeSvgElement("circle", { cx: x, cy: y, r: 6 }));
+    svg.appendChild(node);
+    if (year) {
+      const label = makeSvgElement("text", { x: x + 5, y: y + cardHeight / 2 + 13, class: "marriage-year" });
+      label.textContent = `∞ ${year}`;
+      svg.appendChild(label);
+    }
   }
 
   function branchesFor(person) {
     return [person.family, ...(person.otherFamilies || [])].filter(Boolean);
   }
 
-  function familyHeight(family) {
-    const children = family.children || [];
-    if (!children.length) return cardHeight + 20;
-    const rows = children.map(child => {
-      const branches = branchesFor(child);
-      if (!branches.length) return cardHeight;
-      return branches.reduce((total, branch) => total + familyHeight(branch), 0)
-        + branchGap * (branches.length - 1);
+  /* Kontur poddrzewa: dla każdego poziomu skrajne x (lewe i prawe) zajęte przez karty i linie. */
+  function extendContour(contour, level, min, max) {
+    const current = contour.get(level);
+    contour.set(level, current
+      ? [Math.min(current[0], min), Math.max(current[1], max)]
+      : [min, max]);
+  }
+
+  function mergeContour(target, source, shift) {
+    source.forEach(([min, max], level) => extendContour(target, level, min + shift, max + shift));
+  }
+
+  /* Najmniejsze przesunięcie, przy którym kontur source leży na prawo od target na każdym wspólnym poziomie. */
+  function minimalShift(target, source, gap) {
+    let shift = -Infinity;
+    source.forEach(([min], level) => {
+      const placed = target.get(level);
+      if (placed) shift = Math.max(shift, placed[1] + gap - min);
     });
-    return topPadding + rows.reduce((total, height) => total + height, 0)
-      + rowGap * Math.max(0, rows.length - 1) + topPadding;
+    return shift;
   }
 
-  function personHeight(person) {
-    const branches = branchesFor(person);
-    if (!branches.length) return cardHeight;
-    return branches.reduce((total, family) => total + familyHeight(family), 0)
-      + branchGap * (branches.length - 1);
-  }
+  /* Układ względny: osoba na x = 0, pierwszy małżonek po prawej, drugi po lewej, kolejni dalej po prawej.
+     Dzieci każdego związku tworzą blok pod kropką ślubu; poddrzewa są dosuwane do siebie poziomami. */
+  function layoutUnit(person, branches, level) {
+    const step = cardWidth + coupleGap;
+    const unions = branches.map((family, index) => {
+      const spouseX = index === 1 ? -step : index === 0 ? step : step * index;
+      const dotX = spouseX > 0 ? spouseX - coupleGap / 2 : -coupleGap / 2;
+      return {
+        family,
+        spouse: (family.partners || []).find(partner => partner !== person),
+        spouseX,
+        dotX,
+        farAway: index >= 2,
+        children: (family.children || []).map(child => ({ sub: layoutUnit(child, branchesFor(child), level + 1) }))
+      };
+    }).sort((a, b) => a.dotX - b.dotX);
 
-  function drawPerson(person, x, centerY) {
-    const group = makeSvgElement("g", { class: "person-node" });
-    const title = makeSvgElement("title", {});
-    title.textContent = [
-      person.name,
-      person.birth ? `ur. ${person.birth}${person.birthPlace ? `, ${person.birthPlace}` : ""}` : "",
-      person.death ? `zm. ${person.death}${person.deathPlace ? `, ${person.deathPlace}` : ""}` : ""
-    ].filter(Boolean).join(" · ");
-    group.appendChild(title);
-    group.appendChild(makeSvgElement("rect", {
-      x, y: centerY - cardHeight / 2, width: cardWidth, height: cardHeight
-    }));
-    const label = makeSvgElement("text", { x: x + cardWidth / 2, y: centerY - 5, "font-size": "11" });
-    const nameParts = person.name.split("/");
-    const firstName = nameParts[0].trim().split(/\s+/)[0];
-    const surname = person.name.trim().split(/\s+/).pop();
-    const mainName = nameParts.length > 1 ? `${firstName} ${surname}` : nameParts[0].trim();
-    label.textContent = mainName.length > 23 ? `${mainName.slice(0, 21)}…` : mainName;
-    group.appendChild(label);
-    const dates = makeSvgElement("text", {
-      x: x + cardWidth / 2, y: centerY + 13, class: "person-year"
+    const contour = new Map();
+    extendContour(contour, level, 0, cardWidth);
+    unions.forEach(union => extendContour(contour, level, union.spouseX, union.spouseX + cardWidth));
+    const below = new Map();
+    unions.forEach((union, order) => {
+      union.order = order;
+      if (!union.children.length) return;
+      const block = new Map();
+      union.children.forEach(child => {
+        const shift = minimalShift(block, child.sub.contour, siblingGap);
+        child.shift = Number.isFinite(shift) ? shift : 0;
+        mergeContour(block, child.sub.contour, child.shift);
+      });
+      const first = union.children[0].shift;
+      const last = union.children[union.children.length - 1].shift + cardWidth;
+      const offset = Math.max(union.dotX - (first + last) / 2, minimalShift(below, block, siblingGap));
+      union.children.forEach(child => { child.shift += offset; });
+      mergeContour(below, block, offset);
+      extendContour(below, level + 1, union.dotX, union.dotX);
     });
-    const years = [];
-    if (person.birth) years.push(`ur. ${birthYear(person.birth)}`);
-    if (person.death) years.push(`zm. ${birthYear(person.death)}`);
-    dates.textContent = years.join(" · ") || "data nieznana";
-    group.appendChild(dates);
-    svg.appendChild(group);
-    maxRight = Math.max(maxRight, x + cardWidth);
+    mergeContour(contour, below, 0);
+    return { person, level, unions, contour };
   }
-
-  function drawUnion(family, x, centerY) {
-    const year = family.marriage?.match(/\d{4}/)?.[0] || "";
-    const node = makeSvgElement("g", { class: "union-node" });
-    const title = makeSvgElement("title", {});
-    title.textContent = `${family.name || "Małżeństwo"}${family.marriage ? ` · ${family.marriage}` : ""}`;
-    node.appendChild(title);
-    node.appendChild(makeSvgElement("circle", { cx: x, cy: centerY, r: 7 }));
-    svg.appendChild(node);
-
-    const label = makeSvgElement("g", { class: "marriage-label" });
-    label.appendChild(makeSvgElement("rect", { x: x - 27, y: centerY - 24, width: 54, height: 16 }));
-    const text = makeSvgElement("text", { x, y: centerY - 13 });
-    text.textContent = year ? `ślub ${year}` : "rok ?";
-    label.appendChild(text);
-    svg.appendChild(label);
-  }
-
-  const unionGap = 48;
-  const spouseGap = 36;
-  const busGap = 22;
-  const childGap = 22;
-
-  function edge(d, cls = "edge") {
-    svg.appendChild(makeSvgElement("path", { d, class: cls }));
-  }
-
-  /* Osoba + jej związki: osoba | kropka ślubu | małżonek | szyna dzieci | dzieci. */
-  function drawPersonBranches(person, branches, x, top, centerY, alignToPerson = false) {
-    drawPerson(person, x, centerY);
-    if (!branches.length) return;
-    const heights = branches.map(familyHeight);
-    const centers = [];
-    let branchTop = top;
-    heights.forEach(height => {
-      centers.push(alignToPerson ? centerY : branchTop + height / 2);
-      branchTop += height + branchGap;
-    });
-    const unionX = x + cardWidth + unionGap;
-    const marriageBusX = x + cardWidth + 16;
-    const ys = [centerY, ...centers];
-    edge(`M ${x + cardWidth} ${centerY} H ${marriageBusX} M ${marriageBusX} ${Math.min(...ys)} V ${Math.max(...ys)}`);
-
-    branchTop = top;
-    branches.forEach((branch, index) => {
-      const center = centers[index];
-      const spouseX = unionX + spouseGap;
-      edge(`M ${marriageBusX} ${center} H ${unionX - 7}`);
-      drawUnion(branch, unionX, center);
-      const spouse = (branch.partners || []).find(partner => partner !== person);
-      if (spouse) {
-        edge(`M ${unionX + 7} ${center} H ${spouseX}`, "marriage-edge");
-        drawPerson(spouse, spouseX, center);
+  function drawUnit(unit, offsetX, top) {
+    const y = top + unit.level * rowHeight;
+    const centerY = y + cardHeight / 2;
+    drawPerson(unit.person, offsetX, y);
+    const unionCount = unit.unions.length;
+    unit.unions.forEach(union => {
+      const dotX = offsetX + union.dotX;
+      if (union.spouse) drawPerson(union.spouse, offsetX + union.spouseX, y);
+      if (union.farAway) {
+        const archY = y - 8;
+        edge(`M ${offsetX + cardWidth - 14} ${y} V ${archY} H ${dotX} V ${centerY - 6}`, "marriage-edge");
+      } else {
+        edge(`M ${dotX - coupleGap / 2} ${centerY} H ${dotX + coupleGap / 2}`, "marriage-edge");
       }
-      drawFamilyChildren(branch, unionX, spouseX + cardWidth + busGap, branchTop, center);
-      branchTop += heights[index] + branchGap;
+      drawUnion(union.family, dotX, centerY);
+      if (!union.children.length) return;
+
+      const childTop = y + rowHeight;
+      const busY = childTop - 16 - 8 * union.order;
+      const childCenters = union.children.map(child => offsetX + child.shift + cardWidth / 2);
+      const left = Math.min(dotX, ...childCenters);
+      const right = Math.max(dotX, ...childCenters);
+      edge(`M ${dotX} ${centerY + 6} V ${busY} M ${left} ${busY} H ${right}`);
+      childCenters.forEach(x => edge(`M ${x} ${busY} V ${childTop}`));
+      union.children.forEach(child => drawUnit(child.sub, offsetX + child.shift, top));
     });
   }
 
-  function drawFamilyChildren(family, unionX, busX, top, familyCenterY) {
-    const children = family.children || [];
-    if (!children.length) return;
-    const childX = busX + childGap;
-    let nextTop = top + topPadding;
-    const layouts = children.map(child => {
-      const height = personHeight(child);
-      const layout = { child, top: nextTop, centerY: nextTop + height / 2 };
-      nextTop += height + rowGap;
-      return layout;
-    });
-    const dropY = familyCenterY + cardHeight / 2 + 12;
-    const firstY = Math.min(layouts[0].centerY, dropY);
-    const lastY = Math.max(layouts[layouts.length - 1].centerY, dropY);
-    edge(`M ${unionX} ${familyCenterY + 7} V ${dropY} H ${busX} M ${busX} ${firstY} V ${lastY}`);
-    layouts.forEach(({ child, top: childTop, centerY }) => {
-      edge(`M ${busX} ${centerY} H ${childX}`);
-      drawPersonBranches(child, branchesFor(child), childX, childTop, centerY);
-    });
-  }
-
-  function drawRootFamily(family, top) {
-    const first = family.partners?.[0];
-    const centerY = top + cardHeight / 2 + 20;
-    if (first) {
-      drawPersonBranches(first, [family], 22, top, centerY, true);
-      return;
-    }
-    drawUnion(family, 22 + cardWidth + unionGap, centerY);
-    drawFamilyChildren(family, 22 + cardWidth + unionGap, 22 + cardWidth * 2 + unionGap + spouseGap + busGap, top, centerY);
-  }
+  let firstRootCenter = 0;
   async function loadGraph() {
     try {
       const data = await DrzewoDB.load();
       if (!data.families.length) throw new Error("Baza danych nie zawiera żadnych związków.");
 
       svg.replaceChildren();
-      let nextTop = topPadding;
-      data.families.forEach(root => {
-        drawRootFamily(root, nextTop);
-        nextTop += familyHeight(root) + topPadding * 2;
+      const placed = new Map();
+      const units = data.families
+        .filter(root => root.partners?.[0])
+        .map(root => layoutUnit(root.partners[0], [root], 0));
+      units.forEach(unit => {
+        const shift = minimalShift(placed, unit.contour, rootGap);
+        unit.shift = Number.isFinite(shift) ? shift : 0;
+        mergeContour(placed, unit.contour, unit.shift);
       });
-      const graphHeight = Math.max(240, nextTop);
-      const graphWidth = maxRight + 60;
+      const leftEdge = Math.min(...[...placed.values()].map(([min]) => min));
+      units.forEach((unit, index) => {
+        const offsetX = unit.shift - leftEdge + padding;
+        if (index === 0) firstRootCenter = offsetX + cardWidth;
+        drawUnit(unit, offsetX, padding + 8);
+      });
+      const graphWidth = maxRight + padding;
+      const graphHeight = maxBottom + padding;
       svg.setAttribute("viewBox", `0 0 ${graphWidth} ${graphHeight}`);
       svg.setAttribute("width", graphWidth);
       svg.setAttribute("height", graphHeight);
+      frame.scrollLeft = Math.max(0, firstRootCenter - frame.clientWidth / 2);
       status.hidden = true;
     } catch (error) {
       status.classList.add("error");
