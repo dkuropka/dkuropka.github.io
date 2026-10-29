@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Pełne drzewo genealogiczne rodziny Kuropków">
+<title>Całe drzewo — Rodzina Kuropków</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #263b35;
+    --muted: #64736d;
+    --paper: #f5f6f1;
+    --card: #fffefa;
+    --line: #d7dfd8;
+    --action: #355b45;
+    --action-hover: #264a36;
+    --edge: #91aa98;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background: var(--paper);
+    font: 14px/1.45 system-ui, "Segoe UI", sans-serif;
+  }
+  header {
+    padding: 26px 18px 20px;
+    text-align: center;
+    background: linear-gradient(145deg, #f8f6ed, #eaf1e9);
+    border-bottom: 1px solid var(--line);
+  }
+  h1 { margin: 0; font: 600 clamp(25px, 4vw, 38px)/1.15 Georgia, serif; }
+  .subtitle { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+  main { width: min(1200px, 100%); margin: 0 auto; padding: 18px; }
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .back {
+    color: var(--action);
+    font-size: 13px;
+    text-decoration: none;
+  }
+  .back:hover { text-decoration: underline; }
+  .scroll-controls { display: flex; gap: 6px; }
+  button {
+    min-width: 40px;
+    min-height: 36px;
+    padding: 4px 10px;
+    color: var(--action);
+    background: #e1ebe2;
+    border: 1px solid #b9cbbd;
+    border-radius: 9px;
+    font: inherit;
+    font-size: 18px;
+    cursor: pointer;
+  }
+  button:hover { color: white; background: var(--action-hover); }
+  button:focus-visible, a:focus-visible {
+    outline: 3px solid #d59a50;
+    outline-offset: 3px;
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 18px;
+    margin: 0 0 10px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .legend strong { color: var(--ink); }
+  .graph-frame {
+    overflow: auto;
+    max-height: min(72vh, 900px);
+    min-height: 380px;
+    padding: 12px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    overscroll-behavior: contain;
+    scrollbar-color: #9aac9f #edf1ec;
+  }
+  #family-graph { display: block; }
+  .edge { fill: none; stroke: var(--edge); stroke-width: 1.8; }
+  .marriage-edge { fill: none; stroke: #718e79; stroke-width: 2.4; }
+  .person-node rect { fill: #eaf1e9; stroke: #a9bfad; stroke-width: 1.4; rx: 9; }
+  .person-node text { fill: #284936; text-anchor: middle; font-weight: 600; }
+  .person-node .person-year { fill: #62756a; font-size: 10px; font-weight: 400; }
+  .union-node circle { fill: var(--action); stroke: var(--card); stroke-width: 2; }
+  .marriage-label rect { fill: var(--card); stroke: #c4d2c6; rx: 5; }
+  .marriage-label text { fill: var(--action); font-size: 9px; font-weight: 700; text-anchor: middle; }
+  #status { color: var(--muted); }
+  .error { color: #9c2f25 !important; }
+  footer {
+    width: min(1200px, 100%);
+    margin: 0 auto;
+    padding: 0 18px 12px;
+    color: var(--muted);
+    font-size: 11px;
+    text-align: right;
+  }
+  footer a { color: inherit; text-decoration: none; }
+  @media (max-width: 560px) {
+    main { padding: 12px; }
+    .graph-frame { min-height: 300px; max-height: 68vh; padding: 8px; }
+    .toolbar { align-items: flex-start; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Całe drzewo rodziny Kuropków</h1>
+</header>
+<main>
+  <div class="toolbar">
+    <a class="back" href="./index.html">← Powrót do strony głównej</a>
+    <div class="scroll-controls" aria-label="Przewijanie grafu">
+      <button id="scroll-left" type="button" aria-label="Przewiń graf w lewo" title="Przewiń w lewo">←</button>
+      <button id="scroll-right" type="button" aria-label="Przewiń graf w prawo" title="Przewiń w prawo">→</button>
+    </div>
+  </div>
+  <p id="status" role="status">Wczytywanie danych…</p>
+  <div class="graph-frame" tabindex="0" role="region" aria-label="Pełny graf rodziny, przewijany poziomo i pionowo">
+    <svg id="family-graph" role="img" aria-label="Pełny graf osób i rodzin"></svg>
+  </div>
+</main>
+<footer><a href="mailto:dkuropka@gmail.com">©Dominik Kuropka</a></footer>
+<script src="./lib/sql-wasm.js"></script>
+<script src="./drzewo-db.js"></script>
+<script>
+  "use strict";
+
+  const svg = document.getElementById("family-graph");
+  const frame = document.querySelector(".graph-frame");
+  const status = document.getElementById("status");
+  const svgNamespace = "http://www.w3.org/2000/svg";
+  const cardWidth = 154;
+  const cardHeight = 50;
+  const rowGap = 14;
+  const branchGap = 12;
+  const topPadding = 32;
+  let maxRight = 0;
+
+  function makeSvgElement(name, attributes) {
+    const element = document.createElementNS(svgNamespace, name);
+    Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value));
+    return element;
+  }
+
+  function birthYear(value) {
+    const years = [...new Set(String(value || "").match(/\d{4}/g) || [])];
+    return years.length ? years.join("–") : String(value || "");
+  }
+
+  function branchesFor(person) {
+    return [person.family, ...(person.otherFamilies || [])].filter(Boolean);
+  }
+
+  function familyHeight(family) {
+    const children = family.children || [];
+    if (!children.length) return cardHeight + 20;
+    const rows = children.map(child => {
+      const branches = branchesFor(child);
+      if (!branches.length) return cardHeight;
+      return branches.reduce((total, branch) => total + familyHeight(branch), 0)
+        + branchGap * (branches.length - 1);
+    });
+    return topPadding + rows.reduce((total, height) => total + height, 0)
+      + rowGap * Math.max(0, rows.length - 1) + topPadding;
+  }
+
+  function personHeight(person) {
+    const branches = branchesFor(person);
+    if (!branches.length) return cardHeight;
+    return branches.reduce((total, family) => total + familyHeight(family), 0)
+      + branchGap * (branches.length - 1);
+  }
+
+  function drawPerson(person, x, centerY) {
+    const group = makeSvgElement("g", { class: "person-node" });
+    const title = makeSvgElement("title", {});
+    title.textContent = [
+      person.name,
+      person.birth ? `ur. ${person.birth}${person.birthPlace ? `, ${person.birthPlace}` : ""}` : "",
+      person.death ? `zm. ${person.death}${person.deathPlace ? `, ${person.deathPlace}` : ""}` : ""
+    ].filter(Boolean).join(" · ");
+    group.appendChild(title);
+    group.appendChild(makeSvgElement("rect", {
+      x, y: centerY - cardHeight / 2, width: cardWidth, height: cardHeight
+    }));
+    const label = makeSvgElement("text", { x: x + cardWidth / 2, y: centerY - 5, "font-size": "11" });
+    const nameParts = person.name.split("/");
+    const firstName = nameParts[0].trim().split(/\s+/)[0];
+    const surname = person.name.trim().split(/\s+/).pop();
+    const mainName = nameParts.length > 1 ? `${firstName} ${surname}` : nameParts[0].trim();
+    label.textContent = mainName.length > 23 ? `${mainName.slice(0, 21)}…` : mainName;
+    group.appendChild(label);
+    const dates = makeSvgElement("text", {
+      x: x + cardWidth / 2, y: centerY + 13, class: "person-year"
+    });
+    const years = [];
+    if (person.birth) years.push(`ur. ${birthYear(person.birth)}`);
+    if (person.death) years.push(`zm. ${birthYear(person.death)}`);
+    dates.textContent = years.join(" · ") || "data nieznana";
+    group.appendChild(dates);
+    svg.appendChild(group);
+    maxRight = Math.max(maxRight, x + cardWidth);
+  }
+
+  function drawUnion(family, x, centerY) {
+    const year = family.marriage?.match(/\d{4}/)?.[0] || "";
+    const node = makeSvgElement("g", { class: "union-node" });
+    const title = makeSvgElement("title", {});
+    title.textContent = `${family.name || "Małżeństwo"}${family.marriage ? ` · ${family.marriage}` : ""}`;
+    node.appendChild(title);
+    node.appendChild(makeSvgElement("circle", { cx: x, cy: centerY, r: 7 }));
+    svg.appendChild(node);
+
+    const label = makeSvgElement("g", { class: "marriage-label" });
+    label.appendChild(makeSvgElement("rect", { x: x - 27, y: centerY - 24, width: 54, height: 16 }));
+    const text = makeSvgElement("text", { x, y: centerY - 13 });
+    text.textContent = year ? `ślub ${year}` : "rok ?";
+    label.appendChild(text);
+    svg.appendChild(label);
+  }
+
+  const unionGap = 48;
+  const spouseGap = 36;
+  const busGap = 22;
+  const childGap = 22;
+
+  function edge(d, cls = "edge") {
+    svg.appendChild(makeSvgElement("path", { d, class: cls }));
+  }
+
+  /* Osoba + jej związki: osoba | kropka ślubu | małżonek | szyna dzieci | dzieci. */
+  function drawPersonBranches(person, branches, x, top, centerY, alignToPerson = false) {
+    drawPerson(person, x, centerY);
+    if (!branches.length) return;
+    const heights = branches.map(familyHeight);
+    const centers = [];
+    let branchTop = top;
+    heights.forEach(height => {
+      centers.push(alignToPerson ? centerY : branchTop + height / 2);
+      branchTop += height + branchGap;
+    });
+    const unionX = x + cardWidth + unionGap;
+    const marriageBusX = x + cardWidth + 16;
+    const ys = [centerY, ...centers];
+    edge(`M ${x + cardWidth} ${centerY} H ${marriageBusX} M ${marriageBusX} ${Math.min(...ys)} V ${Math.max(...ys)}`);
+
+    branchTop = top;
+    branches.forEach((branch, index) => {
+      const center = centers[index];
+      const spouseX = unionX + spouseGap;
+      edge(`M ${marriageBusX} ${center} H ${unionX - 7}`);
+      drawUnion(branch, unionX, center);
+      const spouse = (branch.partners || []).find(partner => partner !== person);
+      if (spouse) {
+        edge(`M ${unionX + 7} ${center} H ${spouseX}`, "marriage-edge");
+        drawPerson(spouse, spouseX, center);
+      }
+      drawFamilyChildren(branch, unionX, spouseX + cardWidth + busGap, branchTop, center);
+      branchTop += heights[index] + branchGap;
+    });
+  }
+
+  function drawFamilyChildren(family, unionX, busX, top, familyCenterY) {
+    const children = family.children || [];
+    if (!children.length) return;
+    const childX = busX + childGap;
+    let nextTop = top + topPadding;
+    const layouts = children.map(child => {
+      const height = personHeight(child);
+      const layout = { child, top: nextTop, centerY: nextTop + height / 2 };
+      nextTop += height + rowGap;
+      return layout;
+    });
+    const dropY = familyCenterY + cardHeight / 2 + 12;
+    const firstY = Math.min(layouts[0].centerY, dropY);
+    const lastY = Math.max(layouts[layouts.length - 1].centerY, dropY);
+    edge(`M ${unionX} ${familyCenterY + 7} V ${dropY} H ${busX} M ${busX} ${firstY} V ${lastY}`);
+    layouts.forEach(({ child, top: childTop, centerY }) => {
+      edge(`M ${busX} ${centerY} H ${childX}`);
+      drawPersonBranches(child, branchesFor(child), childX, childTop, centerY);
+    });
+  }
+
+  function drawRootFamily(family, top) {
+    const first = family.partners?.[0];
+    const centerY = top + cardHeight / 2 + 20;
+    if (first) {
+      drawPersonBranches(first, [family], 22, top, centerY, true);
+      return;
+    }
+    drawUnion(family, 22 + cardWidth + unionGap, centerY);
+    drawFamilyChildren(family, 22 + cardWidth + unionGap, 22 + cardWidth * 2 + unionGap + spouseGap + busGap, top, centerY);
+  }
+  async function loadGraph() {
+    try {
+      const data = await DrzewoDB.load();
+      if (!data.families.length) throw new Error("Baza danych nie zawiera żadnych związków.");
+
+      svg.replaceChildren();
+      let nextTop = topPadding;
+      data.families.forEach(root => {
+        drawRootFamily(root, nextTop);
+        nextTop += familyHeight(root) + topPadding * 2;
+      });
+      const graphHeight = Math.max(240, nextTop);
+      const graphWidth = maxRight + 60;
+      svg.setAttribute("viewBox", `0 0 ${graphWidth} ${graphHeight}`);
+      svg.setAttribute("width", graphWidth);
+      svg.setAttribute("height", graphHeight);
+      status.hidden = true;
+    } catch (error) {
+      status.classList.add("error");
+      status.textContent = `Nie udało się wczytać pełnego drzewa: ${error.message}`;
+    }
+  }
+
+  document.getElementById("scroll-left").addEventListener("click", () => {
+    frame.scrollBy({ left: -Math.max(260, frame.clientWidth * 0.75), behavior: "smooth" });
+  });
+  document.getElementById("scroll-right").addEventListener("click", () => {
+    frame.scrollBy({ left: Math.max(260, frame.clientWidth * 0.75), behavior: "smooth" });
+  });
+  loadGraph();
+</script>
+</body>
+</html>

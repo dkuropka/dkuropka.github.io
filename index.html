@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Rodzina Kuropków">
+<title>Rodzina Kuropków</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #263b35;
+    --muted: #64736d;
+    --paper: #f5f6f1;
+    --card: #fffefa;
+    --line: #d7dfd8;
+    --accent: #527b65;
+    --accent-soft: #e8f0e9;
+    --action: #355b45;
+    --action-hover: #264a36;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background: var(--paper);
+    font: 15px/1.5 system-ui, "Segoe UI", sans-serif;
+  }
+  header {
+    padding: clamp(24px, 5vw, 56px) 20px 24px;
+    text-align: center;
+    background: linear-gradient(145deg, #f8f6ed, #eaf1e9);
+    border-bottom: 1px solid var(--line);
+  }
+  h1 {
+    margin: 0;
+    font: 600 clamp(28px, 5vw, 46px)/1.1 Georgia, serif;
+    letter-spacing: -.03em;
+  }
+  main { width: min(1050px, 100%); margin: 0 auto; padding: 18px; }
+  button, select {
+    min-height: 42px;
+    padding: 8px 14px;
+    color: var(--action);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    background: #e1ebe2;
+    border: 1px solid #b9cbbd;
+    border-radius: 10px;
+  }
+  button:hover, select:hover { color: white; background: var(--action-hover); border-color: var(--action-hover); }
+  button:focus-visible, select:focus-visible {
+    outline: 3px solid #d59a50;
+    outline-offset: 3px;
+  }
+  .navigator {
+    display: block;
+    margin-bottom: 12px;
+  }
+  select { width: 100%; }
+  .family-view {
+    min-width: 0;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: 0 3px 14px #263b3509;
+  }
+  .family-heading { padding: 18px 18px 12px; }
+  .family-heading h2 { margin: 0; font: 600 21px/1.25 Georgia, serif; }
+  .family-heading p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+  .family-body { padding: 0 18px 18px; }
+  .couple {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: 8px;
+  }
+  .person {
+    min-width: 0;
+    padding: 12px 14px;
+    background: #f8f9f5;
+    border: 1px solid #e6ebe5;
+    border-radius: 11px;
+  }
+  .person-name { display: block; font-weight: 650; }
+  .person-role { display: block; margin-top: 2px; color: var(--action); font-size: 12px; font-weight: 600; }
+  .person-dates { display: block; margin-top: 2px; color: var(--muted); font-size: 13px; }
+  .marriage {
+    margin: 8px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .children {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 235px), 1fr));
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .children-heading {
+    margin: 16px 0 -4px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 650;
+  }
+  .child {
+    min-width: 0;
+    padding: 10px 12px;
+    background: #fff;
+    border: 1px solid #e6ebe5;
+    border-radius: 10px;
+  }
+  .child > .person-dates { margin-top: 1px; }
+  .child .person-role { margin-top: 1px; }
+  .family-link {
+    display: inline-block;
+    min-height: 32px;
+    margin: 8px 5px 0 0;
+    padding: 5px 9px;
+    color: white;
+    font-size: 12px;
+    text-align: left;
+    background: var(--action);
+    border-color: var(--action);
+    border-radius: 8px;
+  }
+  .family-link:hover { background: var(--action-hover); border-color: var(--action-hover); }
+  .family-map {
+    margin-top: 20px;
+    padding: 14px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+  }
+  .family-map h2 { margin: 0; font: 600 19px/1.3 Georgia, serif; }
+  .family-map h3 { margin: 18px 0 6px; font: 600 16px/1.3 Georgia, serif; }
+  .map-controls {
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+    margin: 8px 0 4px;
+  }
+  .map-controls button {
+    min-width: 38px;
+    min-height: 34px;
+    padding: 3px 8px;
+    font-size: 18px;
+    line-height: 1;
+  }
+  .copyright {
+    padding: 12px 18px;
+    color: var(--muted);
+    font-size: 11px;
+    text-align: right;
+  }
+  .copyright a { color: inherit; text-decoration: none; }
+  .copyright a:hover, .copyright a:focus-visible { color: var(--action); text-decoration: underline; }
+  .page-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: min(1050px, 100%);
+    margin: 0 auto;
+    padding: 0 18px 12px;
+  }
+  .footer-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .documents-button {
+    display: inline-block;
+    padding: 7px 12px;
+    color: white;
+    background: var(--action);
+    border: 1px solid var(--action);
+    border-radius: 9px;
+    font-size: 13px;
+    text-decoration: none;
+  }
+  .documents-button:hover, .documents-button:focus-visible {
+    color: white;
+    background: var(--action-hover);
+    border-color: var(--action-hover);
+  }
+  .map-scroll {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding: 2px 2px 12px;
+    scrollbar-color: #9aac9f #edf1ec;
+  }
+  #ancestor-map { display: block; width: 2200px; height: 430px; }
+  .map-edge { fill: none; stroke: #b9c7bd; stroke-width: 2; }
+  .marriage-edge { fill: none; stroke: #718e79; stroke-width: 2.5; }
+  .marriage-label rect { fill: #fffefa; stroke: #c4d2c6; stroke-width: 1; rx: 5; }
+  .marriage-label text { fill: #355b45; font: 700 10px system-ui, "Segoe UI", sans-serif; text-anchor: middle; }
+  .union-node circle { fill: #355b45; stroke: #fffefa; stroke-width: 2; }
+  .union-node.current circle { fill: #d59a50; stroke: #264a36; }
+  .union-node:focus { outline: none; }
+  .union-node:focus circle { stroke: #d59a50; stroke-width: 4; }
+  .map-node { cursor: pointer; }
+  .map-node rect { fill: #e1ebe2; stroke: #adc2b1; stroke-width: 1.5; rx: 9; }
+  .map-node text { fill: #284936; font: 600 12px system-ui, "Segoe UI", sans-serif; text-anchor: middle; }
+  .map-node .map-year { fill: #62756a; font: 11px system-ui, "Segoe UI", sans-serif; }
+  .map-node:hover rect, .map-node:focus rect { fill: #355b45; stroke: #264a36; }
+  .map-node:hover text, .map-node:focus text { fill: white; }
+  .map-node:hover .map-year, .map-node:focus .map-year { fill: #e2eee4; }
+  .map-node:focus { outline: none; }
+  .map-node:focus rect { stroke: #d59a50; stroke-width: 3; }
+  .map-node.current rect { fill: #355b45; stroke: #264a36; }
+  .map-node.current text, .map-node.current .map-year { fill: white; }
+  .empty-note { color: var(--muted); font-size: 13px; }
+  .unidentified { color: var(--muted); font-style: italic; }
+  @media (max-width: 560px) {
+    main { padding: 12px; }
+    .family-heading { padding: 15px 14px 10px; }
+    .family-heading h2 { font-size: 19px; }
+    .family-body { padding: 0 12px 12px; }
+    .children { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Rodzina Kuropków</h1>
+</header>
+<main>
+  <div class="navigator" aria-label="Nawigacja po rodzinach">
+    <select id="family-select" aria-label="Wybierz rodzinę"></select>
+  </div>
+  <section class="family-map" aria-labelledby="map-title">
+    <h2 id="map-title">Przodkowie</h2>
+    <div class="map-controls" aria-label="Przewijanie grafu">
+      <button id="map-left" type="button" aria-label="Przewiń graf w lewo" title="Przewiń w lewo">←</button>
+      <button id="map-right" type="button" aria-label="Przewiń graf w prawo" title="Przewiń w prawo">→</button>
+    </div>
+    <div class="map-scroll" tabindex="0" role="region" aria-label="Graf przodków">
+      <svg id="ancestor-map" viewBox="0 0 2200 430" role="img" aria-label="Graf nawigacyjny od Dominika Kuropki do Balthasara Kuropki"></svg>
+    </div>
+  </section>
+  <section id="tree" aria-label="Wybrana rodzina"></section>
+</main>
+<footer class="page-footer">
+  <nav class="footer-actions" aria-label="Dodatkowe widoki">
+    <a class="documents-button" href="./dokumenty.html">Dokumenty</a>
+    <a class="documents-button" href="./cale-drzewo.html">Całe drzewo</a>
+  </nav>
+  <small class="copyright"><a href="mailto:dkuropka@gmail.com">©Dominik Kuropka</a></small>
+</footer>
+<script src="./lib/sql-wasm.js"></script>
+<script src="./drzewo-db.js"></script>
+<script>
+  "use strict";
+
+  let data;
+  const tree = document.getElementById("tree");
+  const familySelect = document.getElementById("family-select");
+  const familyIndex = [];
+  let familyNumber = 0;
+  let currentFamilyId = "";
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, character => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    })[character]);
+  }
+
+  function collectFamilies(family, ancestors) {
+    const id = `family-${familyNumber++}`;
+    familyIndex.push({ id, family, ancestors });
+    (family.children || []).forEach(child => {
+      if (child.family) collectFamilies(child.family, [...ancestors, id]);
+      (child.otherFamilies || []).forEach(other => collectFamilies(other, [...ancestors, id]));
+    });
+  }
+
+  function personGender(person) {
+    return person.sex || "";
+  }
+
+  function personMarkup(person, spouse) {
+    const name = escapeHtml(person.name);
+    const role = spouse ? (personGender(person) === "male" ? "Mąż" : personGender(person) === "female" ? "Żona" : "Partner/partnerka") : "";
+    const relationship = role && spouse ? `<span class="person-role">${role}</span>` : "";
+    const knownParents = person.parents;
+    const maiden = person.maiden ? `<span class="person-dates">z d. ${escapeHtml(person.maiden)}</span>` : "";
+    const parents = knownParents ? `<span class="person-dates">Rodzice: ${knownParents.map(escapeHtml).join(" i ")}</span>` : "";
+    const dates = [];
+    if (person.birth) dates.push(`ur. ${escapeHtml(person.death ? person.birth : birthYear(person.birth))}${person.birthPlace ? `, ${escapeHtml(person.birthPlace)}` : ""}`);
+    if (person.death) dates.push(`zm. ${escapeHtml(person.death)}${person.deathPlace ? `, ${escapeHtml(person.deathPlace)}` : ""}`);
+    return `<div class="person"><span class="person-name">${name}</span>${relationship}${maiden}${parents}${dates.length ? `<span class="person-dates">${dates.join(" · ")}</span>` : ""}</div>`;
+  }
+
+  function birthYear(value) {
+    const text = String(value).trim();
+    const years = [...new Set(text.match(/\d{4}/g) || [])];
+    if (!years.length) return text;
+    if (years.length > 1) return `${text.toLowerCase().startsWith("ok.") ? "ok. " : ""}${years.join("–")}`;
+    const prefix = text.match(/^(ok\.|przed|po)\s*/i)?.[0] || "";
+    return `${prefix}${years[0]}${text.includes("?") ? "?" : ""}`;
+  }
+
+  function childMarkup(child, parents) {
+    const dates = [];
+    if (child.birth) dates.push(`ur. ${escapeHtml(child.death ? child.birth : birthYear(child.birth))}${child.birthPlace ? `, ${escapeHtml(child.birthPlace)}` : ""}`);
+    if (child.death) dates.push(`zm. ${escapeHtml(child.death)}${child.deathPlace ? `, ${escapeHtml(child.deathPlace)}` : ""}`);
+    const gender = personGender(child);
+    const role = gender === "male" ? "Syn" : gender === "female" ? "Córka" : "Dziecko";
+    const relationship = `<span class="person-role">${role}</span>`;
+    const parentMarkup = parents.length
+      ? `<span class="person-dates">Rodzice: ${parents.map(parent => escapeHtml(parent.name)).join(" i ")}</span>`
+      : "";
+    const links = [];
+    const childFamily = familyIndex.find(entry => entry.family === child.family);
+    if (childFamily) links.push(`<button class="family-link" type="button" data-family="${childFamily.id}">Rodzina: ${escapeHtml(child.family.name)}</button>`);
+    (child.otherFamilies || []).forEach(other => {
+      const family = familyIndex.find(entry => entry.family === other);
+      if (family) links.push(`<button class="family-link" type="button" data-family="${family.id}">Rodzina: ${escapeHtml(other.name)}</button>`);
+    });
+    return `<div class="child"><span class="person-name">${escapeHtml(child.name)}</span>${relationship}${parentMarkup}${child.maiden ? `<span class="person-dates">z d. ${escapeHtml(child.maiden)}</span>` : ""}${dates.length ? `<span class="person-dates">${dates.join(" · ")}</span>` : ""}${links.join("")}</div>`;
+  }
+
+  function renderFamily(id) {
+    const entry = familyIndex.find(item => item.id === id);
+    if (!entry) return;
+    currentFamilyId = id;
+    const family = entry.family;
+    const partners = family.partners || [];
+    const children = family.children || [];
+    const title = family.name || partners.map(person => person.name).join(" i ");
+    const marriagePlace = family.marriagePlace && !family.marriage?.includes(family.marriagePlace) ? ` · ${escapeHtml(family.marriagePlace)}` : "";
+    tree.innerHTML = `<article class="family-view"><div class="family-heading"><h2>${escapeHtml(title)}</h2>${family.marriage ? `<p>${escapeHtml(family.marriage)}${marriagePlace}</p>` : ""}</div><div class="family-body"><div class="couple">${partners.map((person, index) => personMarkup(person, partners.length === 2 ? partners[1 - index] : null)).join("")}</div>${children.length ? `<h3 class="children-heading">Dzieci (${children.length})</h3><div class="children">${children.map(child => childMarkup(child, partners)).join("")}</div>` : ""}</div></article>`;
+    familySelect.value = id;
+    tree.querySelectorAll("[data-family]").forEach(button => button.addEventListener("click", () => renderFamily(button.dataset.family)));
+    document.querySelectorAll("#ancestor-map [data-family]").forEach(node => {
+      node.classList.toggle("current", node.dataset.family === id);
+    });
+  }
+
+  function renderAncestorMap() {
+    const svg = document.getElementById("ancestor-map");
+    const namespace = "http://www.w3.org/2000/svg";
+    const yearOf = union => (union.marriageDate.match(/\d{4}/) || [""])[0];
+    const toCard = person => [DrzewoDB.shortName(person), person.birth || "?", person.death || ""];
+    const generations = data.ancestorLine.map(generation => ({
+      family: generation.union.title,
+      unionId: generation.union.id,
+      marriageYear: yearOf(generation.union),
+      people: [toCard(generation.person), generation.spouse ? toCard(generation.spouse) : null],
+      otherSpouses: generation.otherUnions.slice(0, 2).map((union, index, list) => {
+        const spouseId = union.partnerIds.find(id => id !== generation.person.id);
+        return {
+          family: union.title,
+          unionId: union.id,
+          marriageYear: yearOf(union),
+          person: spouseId ? toCard(data.people.get(spouseId)) : ["?", "?", ""],
+          position: list.length > 1 && index === 0 ? "top" : "bottom"
+        };
+      })
+    }));
+    const x0 = 18;
+    const step = 250;
+    const topY = 115;
+    const bottomY = 245;
+    const otherSpouseY = { top: 5, bottom: 355 };
+    const boxWidth = 142;
+    const boxHeight = 48;
+    const unionY = 205;
+    const mapWidth = Math.max(x0 * 2 + boxWidth, x0 + (generations.length - 1) * step + boxWidth + 70);
+    svg.setAttribute("viewBox", `0 0 ${mapWidth} 430`);
+    svg.style.width = `${mapWidth}px`;
+    const line = data.ancestorLine;
+    if (line.length) svg.setAttribute("aria-label", `Graf nawigacyjny od ${DrzewoDB.shortName(line[0].person)} do ${DrzewoDB.shortName(line[line.length - 1].person)}`);
+
+    function makeSvgElement(name, attributes) {
+      const element = document.createElementNS(namespace, name);
+      Object.entries(attributes).forEach(([key, value]) => element.setAttribute(key, value));
+      return element;
+    }
+
+    function getFamilyId(unionId) {
+      const entry = familyIndex.find(item => item.family.unionId === unionId);
+      return entry ? entry.id : "";
+    }
+
+    function drawMarriageLabel(x, y, year) {
+      const label = makeSvgElement("g", { class: "marriage-label" });
+      label.appendChild(makeSvgElement("rect", {
+        x: x - 30, y: y - 10, width: 60, height: 20
+      }));
+      const text = makeSvgElement("text", { x, y: y + 3.5 });
+      text.textContent = year ? `ślub ${year}` : "rok ?";
+      label.appendChild(text);
+      svg.appendChild(label);
+    }
+
+    function drawUnion(x, y, ref, year, labelPosition) {
+      const group = makeSvgElement("g", {
+        class: "union-node",
+        tabindex: "0",
+        role: "button",
+        "aria-label": `Małżeństwo, ${year ? `ślub ${year}` : "data nieznana"}. Otwórz rodzinę ${ref.family}`,
+        "data-family": getFamilyId(ref.unionId)
+      });
+      group.appendChild(makeSvgElement("circle", { cx: x, cy: y, r: 8 }));
+      group.addEventListener("click", () => renderFamily(group.dataset.family));
+      group.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          renderFamily(group.dataset.family);
+        }
+      });
+      svg.appendChild(group);
+      drawMarriageLabel(labelPosition ? labelPosition.x : x, labelPosition ? labelPosition.y : y - 16, year);
+    }
+
+    function drawPerson(person, ref, x, y, extraClass) {
+      const group = makeSvgElement("g", {
+        class: `map-node${extraClass ? ` ${extraClass}` : ""}`,
+        tabindex: "0",
+        role: "button",
+        "aria-label": `${person[0]}, urodzenie ${person[1]}. Otwórz rodzinę ${ref.family}`,
+        "data-family": getFamilyId(ref.unionId)
+      });
+      const center = x + boxWidth / 2;
+      group.appendChild(makeSvgElement("rect", { x, y, width: boxWidth, height: boxHeight }));
+      const label = makeSvgElement("text", { x: center, y: y + 19 });
+      label.textContent = person[0];
+      group.appendChild(label);
+      const year = makeSvgElement("text", { x: center, y: y + 37, class: "map-year" });
+      year.textContent = `ur. ${birthYear(person[1])}${person[2] ? ` · zm. ${birthYear(person[2])}` : ""}`;
+      group.appendChild(year);
+      group.addEventListener("click", () => renderFamily(group.dataset.family));
+      group.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          renderFamily(group.dataset.family);
+        }
+      });
+      svg.appendChild(group);
+      group.querySelectorAll("text").forEach(text => {
+        if (text.getComputedTextLength() > boxWidth - 10) {
+          text.setAttribute("textLength", boxWidth - 10);
+          text.setAttribute("lengthAdjust", "spacingAndGlyphs");
+        }
+      });
+    }
+
+    generations.forEach((generation, index) => {
+      const x = x0 + index * step;
+      const center = x + boxWidth / 2;
+      if (index > 0) {
+        const childX = x0 + (index - 1) * step;
+        const childCenterY = topY + boxHeight / 2;
+        const turnX = childX + (step + boxWidth) / 2;
+        svg.appendChild(makeSvgElement("path", {
+          d: `M ${center} ${unionY} L ${turnX} ${unionY} L ${turnX} ${childCenterY} L ${childX + boxWidth} ${childCenterY}`,
+          class: "map-edge"
+        }));
+      }
+      svg.appendChild(makeSvgElement("path", {
+        d: `M ${center} ${topY + boxHeight} L ${center} ${unionY} L ${center} ${bottomY}`,
+        class: "marriage-edge"
+      }));
+      drawPerson(generation.people[0], generation, x, topY);
+      if (generation.people[1]) drawPerson(generation.people[1], generation, x, bottomY);
+      drawUnion(center, unionY, generation, generation.marriageYear);
+
+      (generation.otherSpouses || []).forEach(other => {
+        const spouseY = otherSpouseY[other.position || "top"];
+        const spouseCenterY = spouseY + boxHeight / 2;
+        const sideUnionX = other.position === "top" ? x + boxWidth + 27 : center + 98;
+        const sideUnionY = other.position === "top" ? 84 : 320;
+        if (spouseY < topY) {
+          svg.appendChild(makeSvgElement("path", {
+            d: `M ${x + boxWidth} ${spouseCenterY} L ${sideUnionX} ${spouseCenterY} L ${sideUnionX} ${topY + boxHeight / 2} L ${x + boxWidth} ${topY + boxHeight / 2}`,
+            class: "marriage-edge"
+          }));
+        } else {
+          svg.appendChild(makeSvgElement("path", {
+            d: `M ${x + boxWidth} ${topY + boxHeight / 2} L ${sideUnionX} ${topY + boxHeight / 2} L ${sideUnionX} ${spouseCenterY} L ${x + boxWidth} ${spouseCenterY}`,
+            class: "marriage-edge"
+          }));
+        }
+        drawPerson(other.person, other, x, spouseY);
+        drawUnion(
+          sideUnionX,
+          sideUnionY,
+          other,
+          other.marriageYear,
+          other.position === "top" ? { x: sideUnionX + 40, y: sideUnionY } : null
+        );
+      });
+    });
+  }
+
+  async function loadTree() {
+    data = await DrzewoDB.load();
+    if (!data.families.length) throw new Error("Baza danych nie zawiera żadnych związków.");
+    data.families.forEach(family => collectFamilies(family, []));
+    familySelect.innerHTML = familyIndex.map(entry => {
+      const label = entry.family.name || entry.family.partners.map(person => person.name).join(" i ");
+      const indentation = "\u00a0\u00a0".repeat(entry.ancestors.length);
+      return `<option value="${entry.id}">${indentation}${escapeHtml(label)}</option>`;
+    }).join("");
+    familySelect.addEventListener("change", () => renderFamily(familySelect.value));
+    const mapScroll = document.querySelector(".map-scroll");
+    document.getElementById("map-left").addEventListener("click", () => mapScroll.scrollBy({ left: -Math.max(240, mapScroll.clientWidth * 0.75), behavior: "smooth" }));
+    document.getElementById("map-right").addEventListener("click", () => mapScroll.scrollBy({ left: Math.max(240, mapScroll.clientWidth * 0.75), behavior: "smooth" }));
+    renderFamily(familyIndex[0].id);
+    renderAncestorMap();
+  }
+
+  loadTree().catch(error => {
+    const message = location.protocol === "file:"
+      ? "Przeglądarka blokuje odczyt bazy danych przy otwieraniu HTML z dysku. Umieść pliki na serwerze (np. GitHub Pages) albo uruchom lokalny serwer."
+      : `Nie udało się wczytać danych drzewa: ${error.message}`;
+    tree.innerHTML = `<p role="alert">${escapeHtml(message)}</p>`;
+  });
+</script>
+</body>
+</html>
