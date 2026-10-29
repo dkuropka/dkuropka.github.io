@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="pl">
 <head>
 <meta charset="utf-8">
@@ -55,30 +55,19 @@
   }
   .navigator {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: 10px;
+    grid-template-columns: 36px minmax(0, 1fr) 36px;
+    gap: 8px;
     align-items: center;
     margin-bottom: 12px;
   }
-  .navigator button { white-space: nowrap; }
+  .navigator button {
+    min-height: 36px;
+    padding: 4px;
+    font-size: 19px;
+    line-height: 1;
+  }
+  .navigator button:disabled { cursor: default; opacity: .45; }
   select { width: 100%; }
-  .breadcrumbs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
-    margin: 0 0 12px;
-    color: var(--muted);
-    font-size: 12px;
-  }
-  .breadcrumbs button {
-    min-height: 30px;
-    padding: 3px 9px;
-    font-size: 12px;
-    color: var(--action);
-    background: #e1ebe2;
-    border-color: #b9cbbd;
-    border-radius: 8px;
-  }
   .family-view {
     min-width: 0;
     background: var(--card);
@@ -153,14 +142,10 @@
   }
   .family-map h2 { margin: 0; font: 600 19px/1.3 Georgia, serif; }
   .copyright {
-    position: fixed;
-    right: 12px;
-    bottom: 8px;
-    z-index: 2;
-    padding: 2px 6px;
+    padding: 12px 18px;
     color: var(--muted);
-    background: color-mix(in srgb, var(--paper) 90%, transparent);
     font-size: 11px;
+    text-align: right;
   }
   .copyright a { color: inherit; text-decoration: none; }
   .copyright a:hover, .copyright a:focus-visible { color: var(--action); text-decoration: underline; }
@@ -194,7 +179,9 @@
   .unidentified { color: var(--muted); font-style: italic; }
   @media (max-width: 560px) {
     main { padding: 12px; }
-    .navigator { grid-template-columns: 1fr; }
+    .navigator { grid-template-columns: 36px minmax(0, 1fr) 36px; gap: 6px; }
+    .navigator button { min-height: 38px; }
+    .navigator select { min-width: 0; padding: 7px 8px; }
     .family-heading { padding: 15px 14px 10px; }
     .family-heading h2 { font-size: 19px; }
     .family-body { padding: 0 12px 12px; }
@@ -208,26 +195,25 @@
 </header>
 <main>
   <div class="navigator" aria-label="Nawigacja po rodzinach">
-    <button id="back" type="button">← Poprzednia rodzina</button>
+    <button id="previous-family" type="button" aria-label="Poprzednia rodzina" title="Poprzednia rodzina">←</button>
     <select id="family-select" aria-label="Wybierz rodzinę"></select>
+    <button id="next-family" type="button" aria-label="Następna rodzina" title="Następna rodzina">→</button>
   </div>
-  <nav id="breadcrumbs" class="breadcrumbs" aria-label="Ścieżka"></nav>
-  <section id="tree" aria-label="Wybrana rodzina"></section>
   <section class="family-map" aria-labelledby="map-title">
     <h2 id="map-title">Przodkowie</h2>
     <div class="map-scroll" tabindex="0" role="region" aria-label="Graf przodków">
       <svg id="ancestor-map" viewBox="0 0 2200 430" role="img" aria-label="Graf nawigacyjny od Dominika Kuropki do Balthasara Kuropki"></svg>
     </div>
   </section>
+  <section id="tree" aria-label="Wybrana rodzina"></section>
 </main>
-<small class="copyright"><a href="mailto:dkuropka@gmail.com">©Dominik Kuropka</a></small>
+<footer class="copyright"><a href="mailto:dkuropka@gmail.com">©Dominik Kuropka</a></footer>
 <script>
   "use strict";
 
   let data;
   const tree = document.getElementById("tree");
   const familySelect = document.getElementById("family-select");
-  const breadcrumbs = document.getElementById("breadcrumbs");
   const familyIndex = [];
   const parentsByPerson = new Map();
   let familyNumber = 0;
@@ -340,16 +326,10 @@
     const marriagePlace = family.marriagePlace && !family.marriage?.includes(family.marriagePlace) ? ` · ${escapeHtml(family.marriagePlace)}` : "";
     tree.innerHTML = `<article class="family-view"><div class="family-heading"><h2>${escapeHtml(title)}</h2>${family.marriage ? `<p>${escapeHtml(family.marriage)}${marriagePlace}</p>` : ""}</div><div class="family-body"><div class="couple">${partners.map((person, index) => personMarkup(person, partners.length === 2 ? partners[1 - index] : null)).join("")}</div>${children.length ? `<h3 class="children-heading">Dzieci (${children.length})</h3><div class="children">${children.map(child => childMarkup(child, partners)).join("")}</div>` : ""}</div></article>`;
     familySelect.value = id;
-    document.getElementById("back").disabled = entry.ancestors.length === 0;
-    breadcrumbs.innerHTML = [ ...entry.ancestors, id ].map((familyId, index, path) => {
-      const item = familyIndex.find(candidate => candidate.id === familyId);
-      const label = item.family.name || item.family.partners.map(person => person.name).join(" i ");
-      return index === path.length - 1
-        ? `<span aria-current="page">${escapeHtml(label)}</span>`
-        : `<button type="button" data-family="${familyId}">${escapeHtml(label)}</button><span aria-hidden="true">›</span>`;
-    }).join("");
+    const familyPosition = familyIndex.findIndex(item => item.id === id);
+    document.getElementById("previous-family").disabled = familyPosition <= 0;
+    document.getElementById("next-family").disabled = familyPosition >= familyIndex.length - 1;
     tree.querySelectorAll("[data-family]").forEach(button => button.addEventListener("click", () => renderFamily(button.dataset.family)));
-    breadcrumbs.querySelectorAll("[data-family]").forEach(button => button.addEventListener("click", () => renderFamily(button.dataset.family)));
     document.querySelectorAll("#ancestor-map [data-family]").forEach(node => {
       node.classList.toggle("current", node.dataset.family === id);
     });
@@ -509,9 +489,13 @@
       return `<option value="${entry.id}">${escapeHtml(label)}</option>`;
     }).join("");
     familySelect.addEventListener("change", () => renderFamily(familySelect.value));
-    document.getElementById("back").addEventListener("click", () => {
-      const current = familyIndex.find(entry => entry.id === currentFamilyId);
-      if (current && current.ancestors.length) renderFamily(current.ancestors[current.ancestors.length - 1]);
+    document.getElementById("previous-family").addEventListener("click", () => {
+      const currentPosition = familyIndex.findIndex(entry => entry.id === currentFamilyId);
+      if (currentPosition > 0) renderFamily(familyIndex[currentPosition - 1].id);
+    });
+    document.getElementById("next-family").addEventListener("click", () => {
+      const currentPosition = familyIndex.findIndex(entry => entry.id === currentFamilyId);
+      if (currentPosition < familyIndex.length - 1) renderFamily(familyIndex[currentPosition + 1].id);
     });
     renderFamily(familyIndex[0].id);
     renderAncestorMap();
