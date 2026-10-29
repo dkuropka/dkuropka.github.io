@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Dokumenty rodzinne Kuropków">
+<title>Dokumenty — Rodzina Kuropków</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #263b35;
+    --muted: #64736d;
+    --paper: #f5f6f1;
+    --card: #fffefa;
+    --line: #d7dfd8;
+    --action: #355b45;
+    --action-hover: #264a36;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background: var(--paper);
+    font: 15px/1.5 system-ui, "Segoe UI", sans-serif;
+  }
+  header {
+    padding: 28px 18px 22px;
+    text-align: center;
+    background: linear-gradient(145deg, #f8f6ed, #eaf1e9);
+    border-bottom: 1px solid var(--line);
+  }
+  h1 { margin: 0; font: 600 clamp(26px, 5vw, 40px)/1.15 Georgia, serif; }
+  main { width: min(760px, 100%); margin: 0 auto; padding: 20px 18px 40px; }
+  .panel {
+    padding: 18px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+  }
+  form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  label { flex-basis: 100%; font-weight: 600; }
+  input, button {
+    min-height: 42px;
+    padding: 8px 12px;
+    font: inherit;
+    border: 1px solid #b9cbbd;
+    border-radius: 9px;
+  }
+  input { flex: 1 1 220px; min-width: 0; background: white; }
+  button {
+    color: white;
+    background: var(--action);
+    border-color: var(--action);
+    cursor: pointer;
+  }
+  button:hover { background: var(--action-hover); border-color: var(--action-hover); }
+  input:focus-visible, button:focus-visible, a:focus-visible {
+    outline: 3px solid #d59a50;
+    outline-offset: 3px;
+  }
+  .message { margin: 12px 0 0; color: var(--muted); }
+  .error { color: #9c2f25; }
+  .notice { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
+  #document-list { display: grid; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none; }
+  #document-list a {
+    display: block;
+    padding: 11px 13px;
+    overflow-wrap: anywhere;
+    color: var(--action);
+    background: #f8f9f5;
+    border: 1px solid #e6ebe5;
+    border-radius: 9px;
+    text-decoration: none;
+  }
+  #document-list a:hover { color: white; background: var(--action-hover); }
+  .back { display: inline-block; margin-bottom: 14px; color: var(--action); }
+  footer { padding: 0 18px 12px; color: var(--muted); font-size: 11px; text-align: right; }
+  footer a { color: inherit; text-decoration: none; }
+</style>
+</head>
+<body>
+<header><h1>Dokumenty rodzinne</h1></header>
+<main>
+  <a class="back" href="./rodzina-kuropkow-public.html">← Powrót do drzewa</a>
+  <section class="panel" aria-labelledby="access-title">
+    <h2 id="access-title">Dostęp do dokumentów</h2>
+    <p class="notice">Hasło ukrywa listę na tej stronie, ale same pliki są publiczne i mogą być otwarte bezpośrednio.</p>
+    <form id="password-form">
+      <label for="password">Wpisz hasło</label>
+      <input id="password" type="password" autocomplete="current-password" required>
+      <button type="submit">Otwórz</button>
+    </form>
+    <p id="message" class="message" aria-live="polite"></p>
+    <ul id="document-list" hidden></ul>
+  </section>
+</main>
+<footer><a href="mailto:dkuropka@gmail.com">©Dominik Kuropka</a></footer>
+<script>
+  "use strict";
+
+  const passwordForm = document.getElementById("password-form");
+  const passwordInput = document.getElementById("password");
+  const message = document.getElementById("message");
+  const documentList = document.getElementById("document-list");
+  const apiUrl = "https://api.github.com/repos/dkuropka/dkuropka.github.io/contents/doc?ref=main";
+  const publicFolderUrl = "https://dkuropka.github.io/doc/";
+  const passwordDigest = "8177fdf93087048f089f1c0a37065177d1669e78d821b2895e51ac949c735af3";
+
+  async function sha256(value) {
+    if (!window.crypto?.subtle) throw new Error("Przeglądarka nie obsługuje bezpiecznego sprawdzania hasła. Otwórz stronę przez HTTPS.");
+    const bytes = new TextEncoder().encode(value);
+    const digest = await window.crypto.subtle.digest("SHA-256", bytes);
+    return [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("");
+  }
+
+  passwordForm.addEventListener("submit", async event => {
+    event.preventDefault();
+    message.classList.remove("error");
+    try {
+      if (await sha256(passwordInput.value) !== passwordDigest) {
+        message.textContent = "Nieprawidłowe hasło.";
+        message.classList.add("error");
+        passwordInput.select();
+        return;
+      }
+    } catch (error) {
+      message.textContent = `Nie można sprawdzić hasła: ${error.message}`;
+      message.classList.add("error");
+      return;
+    }
+
+    passwordForm.hidden = true;
+    message.textContent = "Pobieranie listy dokumentów…";
+    try {
+      const response = await fetch(apiUrl, { cache: "no-store" });
+      if (!response.ok) throw new Error(`GitHub API zwróciło błąd ${response.status}.`);
+      const files = await response.json();
+      if (!Array.isArray(files)) throw new Error("Nieprawidłowa odpowiedź z listą plików.");
+      const documents = files
+        .filter(file => file.type === "file" && /\.(pdf|jpe?g|png)$/i.test(file.name))
+        .sort((left, right) => left.name.localeCompare(right.name, "pl"));
+
+      documentList.replaceChildren();
+      documents.forEach(file => {
+        const item = document.createElement("li");
+        const link = document.createElement("a");
+        link.href = publicFolderUrl + file.name.split("/").map(encodeURIComponent).join("/");
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = file.name;
+        item.appendChild(link);
+        documentList.appendChild(item);
+      });
+      documentList.hidden = false;
+      message.textContent = documents.length
+        ? `Znaleziono dokumentów: ${documents.length}. Lista jest pobierana na bieżąco z folderu doc.`
+        : "W folderze doc nie znaleziono plików PDF, JPG ani PNG.";
+    } catch (error) {
+      passwordForm.hidden = false;
+      message.classList.add("error");
+      message.textContent = `Nie udało się pobrać listy dokumentów: ${error.message}`;
+    }
+  });
+</script>
+</body>
+</html>
