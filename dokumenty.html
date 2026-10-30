@@ -108,6 +108,29 @@
   }
   @media (max-width: 420px) {
     .nav-button { min-width: 0; padding: 9px 13px; font-size: 14px; }
+  }
+  /* Wyrazistsza paleta dla ekranów komputerowych */
+  @media screen and (min-width: 768px) and (hover: hover) {
+    :root {
+      --ink: #172a22;
+      --muted: #46594f;
+      --paper: #eaf0e6;
+      --line: #b4c7b8;
+      --action: #2b6844;
+      --action-hover: #1b4e30;
+      --edge: #6a9077;
+      --accent: #3c7a55;
+      --accent-soft: #d7eadb;
+    }
+    header { background: linear-gradient(145deg, #f2ecd6, #cfe4d3); border-bottom-color: #a9c1ae; }
+    .nav-button { background: #d0e4d4; border-color: #8fb398; }
+    .graph-frame, .details-card, .family-map, .family-view, .panel { border-color: #b4c7b8; box-shadow: 0 2px 12px rgba(27, 78, 48, .09); }
+    .details-box, .person, #document-list a { background: #eef5ec; border-color: #c9d9cc; }
+    .child { border-color: #c9d9cc; }
+    .person-node rect { fill: #d2e7d7; stroke: #7da387; }
+    .person-node text { fill: #0f2117; }
+    .marriage-edge { stroke: #557d63; }
+    #document-list a:hover { background: var(--action-hover); }
   }</style>
 </head>
 <body>
