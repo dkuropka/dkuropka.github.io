@@ -53,6 +53,7 @@
         birthPlace: row.miejsce_urodzenia || undefined,
         death: row.data_zgonu || undefined,
         deathPlace: row.miejsce_zgonu || undefined,
+        burial: row.miejsce_pochowku || undefined,
         parentUnionId: row.rodzice_zwiazek_id || null,
         childOrder: row.kolejnosc_dziecka,
         parentsNote: row.rodzice_opis || undefined,

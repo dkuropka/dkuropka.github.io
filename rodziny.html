@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Rodzina Kuropków">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<link rel="icon" href="./favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<title>Rodziny — Rodzina Kuropków</title>
+<style>
+  :root {
+    color-scheme: light;
+    --ink: #263b35;
+    --muted: #64736d;
+    --paper: #f5f6f1;
+    --card: #fffefa;
+    --line: #d7dfd8;
+    --accent: #527b65;
+    --accent-soft: #e8f0e9;
+    --action: #355b45;
+    --action-hover: #264a36;
+  }
+  * { box-sizing: border-box; }
+  html { scrollbar-gutter: stable; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    background: var(--paper);
+    font: 15px/1.5 system-ui, "Segoe UI", sans-serif;
+  }
+  header {
+    padding: 26px 18px 20px;
+    text-align: center;
+    background: linear-gradient(145deg, #f8f6ed, #eaf1e9);
+    border-bottom: 1px solid var(--line);
+  }
+  h1 { margin: 0; font: 600 clamp(25px, 4vw, 38px)/1.15 Georgia, serif; }
+  main { width: min(1050px, 100%); margin: 0 auto; padding: 18px; }
+  button {
+    min-height: 42px;
+    padding: 8px 14px;
+    color: var(--action);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+    background: #e1ebe2;
+    border: 1px solid #b9cbbd;
+    border-radius: 10px;
+  }
+  button:hover { color: white; background: var(--action-hover); border-color: var(--action-hover); }
+  button:focus-visible {
+    outline: 3px solid #d59a50;
+    outline-offset: 3px;
+  }
+  .family-view {
+    min-width: 0;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: 0 3px 14px #263b3509;
+  }
+  .family-heading { padding: 18px 18px 12px; }
+  .family-heading h2 { margin: 0; font: 600 21px/1.25 Georgia, serif; }
+  .family-heading p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+  .family-body { padding: 0 18px 18px; }
+  .couple {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: 8px;
+  }
+  .person {
+    min-width: 0;
+    padding: 12px 14px;
+    background: #f8f9f5;
+    border: 1px solid #e6ebe5;
+    border-radius: 11px;
+  }
+  .person-name { display: block; font-weight: 650; }
+  .person-role { display: block; margin-top: 2px; color: var(--action); font-size: 12px; font-weight: 600; }
+  .person-dates { display: block; margin-top: 2px; color: var(--muted); font-size: 13px; }
+  .marriage {
+    margin: 8px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .children {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 235px), 1fr));
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .children-heading {
+    margin: 16px 0 -4px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 650;
+  }
+  .child {
+    min-width: 0;
+    padding: 10px 12px;
+    background: #fff;
+    border: 1px solid #e6ebe5;
+    border-radius: 10px;
+  }
+  .child > .person-dates { margin-top: 1px; }
+  .child .person-role { margin-top: 1px; }
+  .family-link {
+    display: inline-block;
+    min-height: 32px;
+    margin: 8px 5px 0 0;
+    padding: 5px 9px;
+    color: white;
+    font-size: 12px;
+    text-align: left;
+    background: var(--action);
+    border-color: var(--action);
+    border-radius: 8px;
+  }
+  .family-link:hover { background: var(--action-hover); border-color: var(--action-hover); }
+  .family-map {
+    margin-top: 20px;
+    padding: 14px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+  }
+  .family-map h3 { margin: 18px 0 6px; font: 600 16px/1.3 Georgia, serif; }
+  .copyright {
+    padding: 12px 18px;
+    color: var(--muted);
+    font-size: 11px;
+    text-align: right;
+  }
+  .copyright a { color: inherit; text-decoration: none; }
+  .copyright a:hover, .copyright a:focus-visible { color: var(--action); text-decoration: underline; }
+  .page-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: min(1050px, 100%);
+    margin: 0 auto;
+    padding: 0 18px 12px;
+  }
+  .footer-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .footer-button {
+    display: inline-block;
+    min-height: 0;
+    padding: 7px 12px;
+    color: white;
+    background: var(--action);
+    border: 1px solid var(--action);
+    border-radius: 9px;
+    font: inherit;
+    font-size: 13px;
+    line-height: 1.5;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .footer-button:hover, .footer-button:focus-visible { color: white; background: var(--action-hover); border-color: var(--action-hover); }
+  .map-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    padding: 2px 2px 12px;
+    scrollbar-color: #9aac9f #edf1ec;
+  }
+  #ancestor-map { display: block; margin: 0 auto; }
+  .pannable { cursor: grab; user-select: none; -webkit-user-select: none; }
+  .pannable.dragging, .pannable.dragging .map-link { cursor: grabbing; }
+  #ancestor-map .edge { fill: none; stroke: #9fb4a5; stroke-width: 1.8; }
+  #ancestor-map .marriage-edge { fill: none; stroke: #718e79; stroke-width: 2.4; }
+  #ancestor-map .marriage-year { fill: #355b45; font: 700 9px system-ui, "Segoe UI", sans-serif; }
+  .union-node circle { fill: #355b45; stroke: #fffefa; stroke-width: 2; }
+  .union-node.current circle { fill: #d59a50; stroke: #264a36; }
+  .union-node:focus { outline: none; }
+  .union-node:focus circle { stroke: #d59a50; stroke-width: 4; }
+  .map-link { cursor: pointer; }
+  .person-node rect { fill: #e1ebe2; stroke: #adc2b1; stroke-width: 1.5; }
+  .person-node text { fill: #284936; font: 600 11px system-ui, "Segoe UI", sans-serif; text-anchor: middle; }
+  .person-node .person-year { fill: #62756a; font: 10px system-ui, "Segoe UI", sans-serif; }
+  .person-node.map-link:hover rect, .person-node:focus rect { fill: #355b45; stroke: #264a36; }
+  .person-node.map-link:hover text, .person-node:focus text { fill: white; }
+  .person-node.map-link:hover .person-year, .person-node:focus .person-year { fill: #e2eee4; }
+  .person-node:focus { outline: none; }
+  .person-node:focus rect { stroke: #d59a50; stroke-width: 3; }
+  .person-node.current rect { fill: #355b45; stroke: #264a36; }
+  .person-node.current text, .person-node.current .person-year { fill: white; }
+  .empty-note { color: var(--muted); font-size: 13px; }
+  .unidentified { color: var(--muted); font-style: italic; }
+  @media print {
+    @page { size: A4 portrait; margin: 10mm; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { background: white; }
+    header { padding: 0 0 4mm; background: none; border: 0; }
+    h1 { font-size: 22pt; }
+    main { width: 100%; padding: 0; }
+    .header-actions, .page-footer, .family-link { display: none !important; }
+    .family-map { margin: 0; padding: 0; border: 0; break-after: page; }
+    .map-scroll { overflow: visible; padding: 0; }
+    #ancestor-map { width: 100%; height: 245mm; margin: 0 auto; }
+    .family-view { border: 0; box-shadow: none; }
+    .person, .child { break-inside: avoid; }
+  }
+  @media (max-width: 560px) {
+    main { padding: 12px; }
+    .family-heading { padding: 15px 14px 10px; }
+    .family-heading h2 { font-size: 19px; }
+    .family-body { padding: 0 12px 12px; }
+    .children { grid-template-columns: 1fr; }
+  }
+  .header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 18px;
+  }
+  .nav-button {
+    display: inline-block;
+    min-width: 120px;
+    padding: 10px 20px;
+    color: var(--action);
+    background: #e1ebe2;
+    border: 1px solid #b9cbbd;
+    border-radius: 10px;
+    font: 600 15px/1.45 system-ui, "Segoe UI", sans-serif;
+    text-align: center;
+    text-decoration: none;
+  }
+  .nav-button:hover, .nav-button:focus-visible { color: white; background: var(--action-hover); border-color: var(--action-hover); }
+  .nav-button:focus-visible { outline: 3px solid #d59a50; outline-offset: 3px; }
+  .nav-button[aria-current="page"] {
+    color: white;
+    background: var(--action);
+    border-color: #264a36;
+    box-shadow: 0 2px 6px rgba(38, 74, 54, .18);
+    cursor: default;
+  }
+  @media (max-width: 420px) {
+    .nav-button { min-width: 0; padding: 9px 13px; font-size: 14px; }
+  }</style>
+</head>
+<body>
+<header>
+  <h1>Rodzina Kuropków</h1>
+  <nav class="header-actions" aria-label="Widoki strony">
+    <a class="nav-button" href="./index.html">Całe drzewo</a>
+    <a class="nav-button" href="./rodziny.html" aria-current="page">Rodziny</a>
+    <a class="nav-button" href="./dokumenty.html">Dokumenty</a>
+  </nav>
+</header>
+<main>
+  <section class="family-map" aria-label="Graf przodków">
+    <div class="map-scroll" tabindex="0" role="region" aria-label="Graf przodków">
+      <svg id="ancestor-map" role="img" aria-label="Graf przodków"></svg>
+    </div>
+  </section>
+  <section id="tree" aria-label="Wybrana rodzina"></section>
+</main>
+<footer class="page-footer">
+  <nav class="footer-actions" aria-label="Dodatkowe funkcje">
+    <button class="footer-button" type="button" onclick="window.print()">Drukuj</button>
+  </nav>
+  <small class="copyright"><a href="mailto:dkuropka@gmail.com">©Dominik</a></small>
+</footer>
+<script src="./lib/sql-wasm.js"></script>
+<script src="./drzewo-db.js?v=5"></script>
+<script src="./drzewo-uklad.js?v=5"></script>
+<script>
+  "use strict";
+
+  let data;
+  const tree = document.getElementById("tree");
+  let familyIndex = [];
+  let currentFamilyId = "";
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, character => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    })[character]);
+  }
+
+  function personGender(person) {
+    return person.sex || "";
+  }
+
+  function personMarkup(person, spouse) {
+    const name = escapeHtml(person.name);
+    const role = spouse ? (personGender(person) === "male" ? "Mąż" : personGender(person) === "female" ? "Żona" : "Partner/partnerka") : "";
+    const relationship = role && spouse ? `<span class="person-role">${role}</span>` : "";
+    const knownParents = person.parents;
+    const maiden = person.maiden ? `<span class="person-dates">z d. ${escapeHtml(person.maiden)}</span>` : "";
+    const parents = knownParents ? `<span class="person-dates">Rodzice: ${knownParents.map(escapeHtml).join(" i ")}</span>` : "";
+    const dates = [];
+    if (person.birth) dates.push(`ur. ${escapeHtml(person.death ? person.birth : birthYear(person.birth))}${person.birthPlace ? `, ${escapeHtml(person.birthPlace)}` : ""}`);
+    if (person.death) dates.push(`zm. ${escapeHtml(person.death)}${person.deathPlace ? `, ${escapeHtml(person.deathPlace)}` : ""}`);
+    if (person.burial) dates.push(`grób: ${escapeHtml(person.burial)}`);
+    return `<div class="person"><span class="person-name">${name}</span>${relationship}${maiden}${parents}${dates.length ? `<span class="person-dates">${dates.join(" · ")}</span>` : ""}</div>`;
+  }
+
+  function birthYear(value) {
+    const text = String(value).trim();
+    const years = [...new Set(text.match(/\d{4}/g) || [])];
+    if (!years.length) return text;
+    if (years.length > 1) return `${text.toLowerCase().startsWith("ok.") ? "ok. " : ""}${years.join("–")}`;
+    const prefix = text.match(/^(ok\.|przed|po)\s*/i)?.[0] || "";
+    return `${prefix}${years[0]}${text.includes("?") ? "?" : ""}`;
+  }
+
+  function childMarkup(child, parents) {
+    const dates = [];
+    if (child.birth) dates.push(`ur. ${escapeHtml(child.death ? child.birth : birthYear(child.birth))}${child.birthPlace ? `, ${escapeHtml(child.birthPlace)}` : ""}`);
+    if (child.death) dates.push(`zm. ${escapeHtml(child.death)}${child.deathPlace ? `, ${escapeHtml(child.deathPlace)}` : ""}`);
+    if (child.burial) dates.push(`grób: ${escapeHtml(child.burial)}`);
+    const gender = personGender(child);
+    const role = gender === "male" ? "Syn" : gender === "female" ? "Córka" : "Dziecko";
+    const relationship = `<span class="person-role">${role}</span>`;
+    const parentMarkup = parents.length
+      ? `<span class="person-dates">Rodzice: ${parents.map(parent => escapeHtml(parent.name)).join(" i ")}</span>`
+      : "";
+    const links = [];
+    const childFamily = familyIndex.find(entry => entry.family === child.family);
+    if (childFamily) links.push(`<button class="family-link" type="button" data-family="${childFamily.id}">Rodzina: ${escapeHtml(child.family.name)}</button>`);
+    (child.otherFamilies || []).forEach(other => {
+      const family = familyIndex.find(entry => entry.family === other);
+      if (family) links.push(`<button class="family-link" type="button" data-family="${family.id}">Rodzina: ${escapeHtml(other.name)}</button>`);
+    });
+    return `<div class="child"><span class="person-name">${escapeHtml(child.name)}</span>${relationship}${parentMarkup}${child.maiden ? `<span class="person-dates">z d. ${escapeHtml(child.maiden)}</span>` : ""}${dates.length ? `<span class="person-dates">${dates.join(" · ")}</span>` : ""}${links.join("")}</div>`;
+  }
+
+  function renderFamily(id) {
+    const entry = familyIndex.find(item => item.id === id);
+    if (!entry) return;
+    currentFamilyId = id;
+    const family = entry.family;
+    const partners = family.partners || [];
+    const children = family.children || [];
+    const title = family.name || partners.map(person => person.name).join(" i ");
+    const marriagePlace = family.marriagePlace && !family.marriage?.includes(family.marriagePlace) ? ` · ${escapeHtml(family.marriagePlace)}` : "";
+    tree.innerHTML = `<article class="family-view"><div class="family-heading"><h2>${escapeHtml(title)}</h2>${family.marriage ? `<p>${escapeHtml(family.marriage)}${marriagePlace}</p>` : ""}</div><div class="family-body"><div class="couple">${partners.map((person, index) => personMarkup(person, partners.length === 2 ? partners[1 - index] : null)).join("")}</div>${children.length ? `<h3 class="children-heading">Dzieci (${children.length})</h3><div class="children">${children.map(child => childMarkup(child, partners)).join("")}</div>` : ""}</div></article>`;
+    tree.querySelectorAll("[data-family]").forEach(button => button.addEventListener("click", () => renderFamily(button.dataset.family)));
+    highlightOnMap(id);
+  }
+
+  function highlightOnMap(id) {
+    document.querySelectorAll("#ancestor-map [data-family]").forEach(node => {
+      node.classList.toggle("current", node.dataset.family === id);
+    });
+  }
+
+  function renderAncestorMap() {
+    const svg = document.getElementById("ancestor-map");
+    const line = data.ancestorLine;
+    if (!line.length) return;
+    svg.setAttribute("aria-label", `Graf przodków od ${DrzewoDB.shortName(line[line.length - 1].person)} do ${DrzewoDB.shortName(line[0].person)}`);
+
+    // Tylko ciągła linia rodu: w każdym pokoleniu główny związek z następną osobą z linii jako dzieckiem.
+    const branchesByPerson = new Map();
+    line.forEach((generation, index) => {
+      const real = data.familyByUnionId.get(generation.union.id);
+      const next = line[index - 1];
+      branchesByPerson.set(generation.person, [{
+        ...real,
+        partners: [generation.person, generation.spouse].filter(Boolean),
+        children: next ? [next.person] : []
+      }]);
+    });
+
+    function getFamilyId(family) {
+      const entry = family && familyIndex.find(item => item.family.unionId === family.unionId);
+      return entry ? entry.id : "";
+    }
+
+    function makeInteractive(group, family, label) {
+      const familyId = getFamilyId(family);
+      if (!familyId) return;
+      group.classList.add("map-link");
+      group.dataset.family = familyId;
+      group.setAttribute("tabindex", "0");
+      group.setAttribute("role", "button");
+      group.setAttribute("aria-label", `${label}. Otwórz rodzinę ${family.name || ""}`);
+      group.addEventListener("click", () => renderFamily(familyId));
+      group.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          renderFamily(familyId);
+        }
+      });
+    }
+
+    const top = line[line.length - 1];
+    DrzewoUklad.render(svg, [{ person: top.person, branches: branchesByPerson.get(top.person) }], {
+      branchesOf: person => branchesByPerson.get(person) || [],
+      childrenUnderPerson: true,
+      onPerson: (group, person, family) => makeInteractive(group, family, person.name),
+      onUnion: (group, family) => makeInteractive(group, family, family.marriage || "Małżeństwo")
+    });
+    highlightOnMap(currentFamilyId);
+  }
+  async function loadTree() {
+    data = await DrzewoDB.load();
+    if (!data.ancestorLine.length) throw new Error("Baza danych nie zawiera linii rodu.");
+    // Tylko rodziny z ciągłej linii rodu, od najstarszej.
+    familyIndex = [...data.ancestorLine].reverse()
+      .map(generation => data.familyByUnionId.get(generation.union.id))
+      .filter(Boolean)
+      .map((family, index) => ({ id: `family-${index}`, family }));
+    renderFamily(familyIndex[0].id);
+    renderAncestorMap();
+    DrzewoUklad.enablePan(document.querySelector(".map-scroll"));
+  }
+
+  loadTree().catch(error => {
+    const message = location.protocol === "file:"
+      ? "Przeglądarka blokuje odczyt bazy danych przy otwieraniu HTML z dysku. Umieść pliki na serwerze (np. GitHub Pages) albo uruchom lokalny serwer."
+      : `Nie udało się wczytać danych drzewa: ${error.message}`;
+    tree.innerHTML = `<p role="alert">${escapeHtml(message)}</p>`;
+  });
+</script>
+</body>
+</html>
