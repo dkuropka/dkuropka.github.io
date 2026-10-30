@@ -11,13 +11,29 @@
 
   function compareIds(a, b) { return a.id - b.id; }
 
-  /* Krótka nazwa do grafów: pierwsze imię + nazwisko rodowe (jeśli jest) albo ostatni człon nazwiska. */
+  /* Krótka nazwa do grafów: pierwsze imię + nazwisko rodowe (jeśli jest) albo nazwisko. */
   function shortName(person) {
-    const clean = person.name.replace(/\([^)]*\)/g, " ").trim();
-    const given = clean.split("/")[0].trim().split(/\s+/)[0] || person.name;
-    const tokens = clean.split(/\s+/);
-    const surname = person.maiden || (tokens.length > 1 ? tokens[tokens.length - 1] : "");
-    return surname && surname !== given ? `${given} ${surname}` : given;
+    const surname = person.maiden || person.surname;
+    return surname ? `${person.given} ${surname}` : person.given;
+  }
+
+  /* Nazwa rodziny, np. 'Leon Kuropka i Otylia Zimna'; nazwisko małżonka pomijane, gdy jest takie samo jak pierwszego. */
+  function unionTitle(partners) {
+    const [first, second] = partners;
+    if (!second) return first ? shortName(first) : "";
+    const sameSurname = !second.maiden && second.surname && second.surname === first.surname;
+    return `${shortName(first)} i ${sameSurname ? second.given : shortName(second)}`;
+  }
+
+  /* Pełna nazwa, np. 'Jan / Johann Kuropka', 'Jadwiga / Hedwig Tira (Tyrra)'. */
+  function fullName(row) {
+    return [
+      row.imie,
+      row.drugie_imie,
+      row.warianty_imienia && `/ ${row.warianty_imienia}`,
+      row.nazwisko,
+      row.warianty_nazwiska && `(${row.warianty_nazwiska})`
+    ].filter(Boolean).join(" ");
   }
 
   function buildModel(personRows, unionRows, settingRows) {
@@ -25,7 +41,12 @@
     personRows.forEach(row => {
       people.set(row.id, {
         id: row.id,
-        name: row.imiona_nazwisko,
+        name: fullName(row),
+        given: row.imie,
+        secondName: row.drugie_imie || undefined,
+        surname: row.nazwisko || undefined,
+        givenVariants: row.warianty_imienia || undefined,
+        surnameVariants: row.warianty_nazwiska || undefined,
         maiden: row.nazwisko_rodowe || undefined,
         sex: row.plec === "M" ? "male" : row.plec === "K" ? "female" : "",
         birth: row.data_urodzenia || undefined,
@@ -65,7 +86,7 @@
         const pa = people.get(a), pb = people.get(b);
         return (pa.childOrder ?? 1e9) - (pb.childOrder ?? 1e9) || a - b;
       });
-      if (!union.title) union.title = union.partnerIds.map(id => shortName(people.get(id))).join(" i ");
+      if (!union.title) union.title = unionTitle(union.partnerIds.map(id => people.get(id)));
     });
 
     people.forEach(person => {

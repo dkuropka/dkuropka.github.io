@@ -29,16 +29,12 @@
     return `${/ok\.|\?/.test(raw) ? "~" : ""}${firstOnly ? years[0] : years.join("–")}`;
   }
 
+  /* Dwie linie karty: imię (w trybie kompaktowym tylko pierwsze) oraz nazwisko z ewentualnym nazwiskiem rodowym. */
   function nameLines(person) {
-    const variants = person.name.split("/").map(part => part.trim());
-    const core = person.name.replace(/\([^)]*\)/g, " ").trim().split(/\s+/);
-    const nickname = (person.name.match(/\(([^)]*)\)/) || [])[1];
-    if (core.length < 2) return [core[0] || person.name, nickname ? `(${nickname})` : ""];
-    const surname = core[core.length - 1];
-    const given = variants.length > 1
-      ? variants[0].split(/\s+/)[0]
-      : core.slice(0, -1).join(" ");
-    if (compact) return [given.split(/\s+/)[0], surname];
+    const given = compact || !person.secondName ? person.given : `${person.given} ${person.secondName}`;
+    const surname = person.surname;
+    if (!surname) return [given, person.givenVariants ? `(${person.givenVariants})` : ""];
+    if (compact) return [given, surname];
     const maiden = person.maiden && !surname.includes(person.maiden) ? ` z d. ${person.maiden}` : "";
     return [given, surname + maiden];
   }
