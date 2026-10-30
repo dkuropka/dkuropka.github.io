@@ -1,6 +1,7 @@
 /* Wspólny układ grafu rodziny: pokolenia z góry na dół, kompaktowe karty osób.
-   Użycie: DrzewoUklad.render(svg, [{ person, branches }], { branchesOf, onPerson, onUnion, childrenUnderPerson, compact, cardWidth }).
-   compact: tylko pierwsze imię, bez nazwiska rodowego i tylko pierwszy rok przy datach alternatywnych. */
+   Użycie: DrzewoUklad.render(svg, [{ person, branches }], { branchesOf, onPerson, onUnion, childrenUnderPerson, compact, cardWidth, maidenLine }).
+   compact: tylko pierwsze imię, bez nazwiska rodowego i tylko pierwszy rok przy datach alternatywnych.
+   maidenLine: nazwisko rodowe w osobnej linii pod nazwiskiem (karty są wtedy wyższe). */
 (function () {
   "use strict";
 
@@ -8,12 +9,15 @@
   const defaultCardWidth = 112;
   let cardWidth = defaultCardWidth;
   let compact = false;
-  const cardHeight = 52;
+  const defaultCardHeight = 52;
+  const maidenLineHeight = 13;
+  let cardHeight = defaultCardHeight;
+  let showMaiden = false;
   const coupleGap = 30;
   const siblingGap = 14;
   const rootGap = 48;
   const levelGap = 62;
-  const rowHeight = cardHeight + levelGap;
+  let rowHeight = cardHeight + levelGap;
   const padding = 24;
 
   function makeSvgElement(name, attributes) {
@@ -121,6 +125,9 @@
     const branchesOf = options.branchesOf || defaultBranchesOf;
     compact = Boolean(options.compact);
     cardWidth = options.cardWidth || defaultCardWidth;
+    showMaiden = Boolean(options.maidenLine);
+    cardHeight = defaultCardHeight + (showMaiden ? maidenLineHeight : 0);
+    rowHeight = cardHeight + levelGap;
     let maxRight = 0;
     let maxBottom = 0;
 
@@ -145,10 +152,14 @@
       const years = [];
       if (person.birth) years.push(`* ${yearText(person.birth)}`);
       if (person.death) years.push(`† ${yearText(person.death)}`);
+      // Dodatkowa linia z nazwiskiem rodowym; karty bez niego mają treść wyśrodkowaną w pionie.
+      const maiden = showMaiden && person.maiden && person.maiden !== person.surname ? person.maiden : "";
+      const shiftY = showMaiden && !maiden ? maidenLineHeight / 2 : 0;
       [
-        [given, 16, "person-name"],
-        [surname, 30, "person-name"],
-        [years.join(compact ? " " : "  "), 45, "person-year"]
+        [given, 16 + shiftY, "person-name"],
+        [surname, 30 + shiftY, "person-name"],
+        [maiden && `z d. ${maiden}`, 43, "person-maiden"],
+        [years.join(compact ? " " : "  "), 45 + shiftY + (maiden ? maidenLineHeight : 0), "person-year"]
       ].forEach(([content, dy, cls]) => {
         if (!content) return;
         const text = makeSvgElement("text", { x: centerX, y: y + dy, class: cls });
@@ -228,5 +239,54 @@
     return { width, height, firstRootCenter };
   }
 
-  window.DrzewoUklad = { render, nameLines, yearText };
+  /* Przesuwanie grafu na komputerze: przeciąganie myszą (poziomo kontener, pionowo strona) i strzałki ←/→. */
+  function enablePan(frame) {
+    let drag = null;
+    let suppressClick = false;
+    frame.classList.add("pannable");
+    frame.addEventListener("pointerdown", event => {
+      if (event.pointerType !== "mouse" || event.button !== 0) return;
+      drag = { id: event.pointerId, x: event.clientX, y: event.clientY, moved: false };
+    });
+    frame.addEventListener("pointermove", event => {
+      if (!drag || event.pointerId !== drag.id) return;
+      const dx = event.clientX - drag.x;
+      const dy = event.clientY - drag.y;
+      if (!drag.moved && Math.hypot(dx, dy) < 5) return;
+      if (!drag.moved) {
+        drag.moved = true;
+        frame.setPointerCapture(drag.id);
+        frame.classList.add("dragging");
+      }
+      frame.scrollLeft -= dx;
+      window.scrollBy(0, -dy);
+      drag.x = event.clientX;
+      drag.y = event.clientY;
+      event.preventDefault();
+    });
+    function endDrag(event) {
+      if (!drag || event.pointerId !== drag.id) return;
+      suppressClick = drag.moved;
+      frame.classList.remove("dragging");
+      drag = null;
+    }
+    frame.addEventListener("pointerup", endDrag);
+    frame.addEventListener("pointercancel", endDrag);
+    frame.addEventListener("click", event => {
+      if (!suppressClick) return;
+      suppressClick = false;
+      event.stopPropagation();
+      event.preventDefault();
+    }, true);
+    frame.addEventListener("dragstart", event => event.preventDefault());
+    document.addEventListener("keydown", event => {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      if (event.target.closest?.("input, textarea, select, [contenteditable]")) return;
+      event.preventDefault();
+      frame.scrollBy({ left: event.key === "ArrowLeft" ? -80 : 80 });
+    });
+  }
+
+  window.DrzewoUklad = { render, nameLines, yearText, enablePan };
 })();

@@ -33,7 +33,7 @@
   }
   h1 { margin: 0; font: 600 clamp(25px, 4vw, 38px)/1.15 Georgia, serif; }
   main { width: min(1050px, 100%); margin: 0 auto; padding: 18px; }
-  button, select {
+  button {
     min-height: 42px;
     padding: 8px 14px;
     color: var(--action);
@@ -44,16 +44,11 @@
     border: 1px solid #b9cbbd;
     border-radius: 10px;
   }
-  button:hover, select:hover { color: white; background: var(--action-hover); border-color: var(--action-hover); }
-  button:focus-visible, select:focus-visible {
+  button:hover { color: white; background: var(--action-hover); border-color: var(--action-hover); }
+  button:focus-visible {
     outline: 3px solid #d59a50;
     outline-offset: 3px;
   }
-  .navigator {
-    display: block;
-    margin-bottom: 12px;
-  }
-  select { width: 100%; }
   .family-view {
     min-width: 0;
     background: var(--card);
@@ -193,6 +188,8 @@
     scrollbar-color: #9aac9f #edf1ec;
   }
   #ancestor-map { display: block; }
+  .pannable { cursor: grab; user-select: none; -webkit-user-select: none; }
+  .pannable.dragging, .pannable.dragging .map-link { cursor: grabbing; }
   #ancestor-map .edge { fill: none; stroke: #9fb4a5; stroke-width: 1.8; }
   #ancestor-map .marriage-edge { fill: none; stroke: #718e79; stroke-width: 2.4; }
   #ancestor-map .marriage-year { fill: #355b45; font: 700 9px system-ui, "Segoe UI", sans-serif; }
@@ -211,8 +208,7 @@
   .person-node:focus rect { stroke: #d59a50; stroke-width: 3; }
   .person-node.current rect { fill: #355b45; stroke: #264a36; }
   .person-node.current text, .person-node.current .person-year { fill: white; }
-  .person-node.related rect { fill: #fbefdc; stroke: #d59a50; stroke-width: 3; stroke-dasharray: 6 3; }
-  .union-node.related circle { fill: #d59a50; stroke: #fffefa; }  .empty-note { color: var(--muted); font-size: 13px; }
+  .empty-note { color: var(--muted); font-size: 13px; }
   .unidentified { color: var(--muted); font-style: italic; }
   @media print {
     @page { size: A4 portrait; margin: 10mm; }
@@ -221,7 +217,7 @@
     header { padding: 0 0 4mm; background: none; border: 0; }
     h1 { font-size: 22pt; }
     main { width: 100%; padding: 0; }
-    .header-actions, .navigator, .page-footer, .family-link { display: none !important; }
+    .header-actions, .page-footer, .family-link { display: none !important; }
     .family-map { margin: 0; padding: 0; border: 0; break-after: page; }
     .map-scroll { overflow: visible; padding: 0; }
     #ancestor-map { width: 100%; height: 245mm; margin: 0 auto; }
@@ -245,9 +241,6 @@
   </nav>
 </header>
 <main>
-  <div class="navigator" aria-label="Nawigacja po rodzinach">
-    <select id="family-select" aria-label="Wybierz rodzinę"></select>
-  </div>
   <section class="family-map" aria-label="Graf przodków">
     <div class="map-scroll" tabindex="0" role="region" aria-label="Graf przodków">
       <svg id="ancestor-map" role="img" aria-label="Graf przodków"></svg>
@@ -257,37 +250,26 @@
 </main>
 <footer class="page-footer">
   <nav class="footer-actions" aria-label="Dodatkowe funkcje">
-    <a class="footer-button" href="./dokumenty.html">Dokumenty</a>
+    <a class="footer-button" href="./dokumenty.html?z=index">Dokumenty</a>
     <button class="footer-button" type="button" onclick="window.print()">Drukuj</button>
   </nav>
   <small class="copyright"><a href="mailto:dkuropka@gmail.com">©Dominik</a></small>
 </footer>
 <script src="./lib/sql-wasm.js"></script>
 <script src="./drzewo-db.js?v=4"></script>
-<script src="./drzewo-uklad.js?v=3"></script>
+<script src="./drzewo-uklad.js?v=4"></script>
 <script>
   "use strict";
 
   let data;
   const tree = document.getElementById("tree");
-  const familySelect = document.getElementById("family-select");
-  const familyIndex = [];
-  let familyNumber = 0;
+  let familyIndex = [];
   let currentFamilyId = "";
 
   function escapeHtml(value) {
     return String(value).replace(/[&<>"']/g, character => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
     })[character]);
-  }
-
-  function collectFamilies(family, ancestors) {
-    const id = `family-${familyNumber++}`;
-    familyIndex.push({ id, family, ancestors });
-    (family.children || []).forEach(child => {
-      if (child.family) collectFamilies(child.family, [...ancestors, id]);
-      (child.otherFamilies || []).forEach(other => collectFamilies(other, [...ancestors, id]));
-    });
   }
 
   function personGender(person) {
@@ -346,23 +328,14 @@
     const title = family.name || partners.map(person => person.name).join(" i ");
     const marriagePlace = family.marriagePlace && !family.marriage?.includes(family.marriagePlace) ? ` · ${escapeHtml(family.marriagePlace)}` : "";
     tree.innerHTML = `<article class="family-view"><div class="family-heading"><h2>${escapeHtml(title)}</h2>${family.marriage ? `<p>${escapeHtml(family.marriage)}${marriagePlace}</p>` : ""}</div><div class="family-body"><div class="couple">${partners.map((person, index) => personMarkup(person, partners.length === 2 ? partners[1 - index] : null)).join("")}</div>${children.length ? `<h3 class="children-heading">Dzieci (${children.length})</h3><div class="children">${children.map(child => childMarkup(child, partners)).join("")}</div>` : ""}</div></article>`;
-    familySelect.value = id;
     tree.querySelectorAll("[data-family]").forEach(button => button.addEventListener("click", () => renderFamily(button.dataset.family)));
-    highlightOnMap(id, entry.ancestors);
+    highlightOnMap(id);
   }
 
-  /* Rodzina z linii przodków: pełne zaznaczenie. Rodzina spoza linii: obwódka przodka z linii, od którego pochodzi. */
-  function highlightOnMap(id, ancestors = [], scroll = false) {
-    const nodes = [...document.querySelectorAll("#ancestor-map [data-family]")];
-    const onMap = familyId => nodes.some(node => node.dataset.family === familyId);
-    const related = onMap(id) ? "" : [...ancestors].reverse().find(onMap) || "";
-    nodes.forEach(node => {
+  function highlightOnMap(id) {
+    document.querySelectorAll("#ancestor-map [data-family]").forEach(node => {
       node.classList.toggle("current", node.dataset.family === id);
-      node.classList.toggle("related", node.dataset.family === related);
     });
-    if (!scroll) return;
-    const target = document.querySelector("#ancestor-map .union-node.current, #ancestor-map .union-node.related");
-    if (target) target.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
   }
 
   function renderAncestorMap() {
@@ -371,21 +344,16 @@
     if (!line.length) return;
     svg.setAttribute("aria-label", `Graf przodków od ${DrzewoDB.shortName(line[line.length - 1].person)} do ${DrzewoDB.shortName(line[0].person)}`);
 
-    // Tylko linia przodków: główny związek ma jako dziecko następną osobę z linii, inne związki bez dzieci.
+    // Tylko ciągła linia rodu: w każdym pokoleniu główny związek z następną osobą z linii jako dzieckiem.
     const branchesByPerson = new Map();
     line.forEach((generation, index) => {
       const real = data.familyByUnionId.get(generation.union.id);
       const next = line[index - 1];
-      const main = {
+      branchesByPerson.set(generation.person, [{
         ...real,
         partners: [generation.person, generation.spouse].filter(Boolean),
         children: next ? [next.person] : []
-      };
-      const others = generation.otherUnions
-        .map(union => data.familyByUnionId.get(union.id))
-        .filter(Boolean)
-        .map(family => ({ ...family, children: [] }));
-      branchesByPerson.set(generation.person, [main, ...others]);
+      }]);
     });
 
     function getFamilyId(family) {
@@ -417,25 +385,19 @@
       onPerson: (group, person, family) => makeInteractive(group, family, person.name),
       onUnion: (group, family) => makeInteractive(group, family, family.marriage || "Małżeństwo")
     });
-    const currentEntry = familyIndex.find(item => item.id === currentFamilyId);
-    highlightOnMap(currentFamilyId, currentEntry ? currentEntry.ancestors : []);
+    highlightOnMap(currentFamilyId);
   }
   async function loadTree() {
     data = await DrzewoDB.load();
-    if (!data.families.length) throw new Error("Baza danych nie zawiera żadnych związków.");
-    data.families.forEach(family => collectFamilies(family, []));
-    familySelect.innerHTML = familyIndex.map(entry => {
-      const label = entry.family.name || entry.family.partners.map(person => person.name).join(" i ");
-      const indentation = "\u00a0\u00a0".repeat(entry.ancestors.length);
-      return `<option value="${entry.id}">${indentation}${escapeHtml(label)}</option>`;
-    }).join("");
-    familySelect.addEventListener("change", () => {
-      renderFamily(familySelect.value);
-      const entry = familyIndex.find(item => item.id === familySelect.value);
-      highlightOnMap(familySelect.value, entry ? entry.ancestors : [], true);
-    });
+    if (!data.ancestorLine.length) throw new Error("Baza danych nie zawiera linii rodu.");
+    // Tylko rodziny z ciągłej linii rodu, od najstarszej.
+    familyIndex = [...data.ancestorLine].reverse()
+      .map(generation => data.familyByUnionId.get(generation.union.id))
+      .filter(Boolean)
+      .map((family, index) => ({ id: `family-${index}`, family }));
     renderFamily(familyIndex[0].id);
     renderAncestorMap();
+    DrzewoUklad.enablePan(document.querySelector(".map-scroll"));
   }
 
   loadTree().catch(error => {

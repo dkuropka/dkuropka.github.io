@@ -32,14 +32,6 @@
   }
   h1 { margin: 0; font: 600 clamp(25px, 4vw, 38px)/1.15 Georgia, serif; }
   main { width: min(1200px, 100%); margin: 0 auto; padding: 18px; }
-  .toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
-  }
   .header-actions {
     display: flex;
     justify-content: center;
@@ -58,7 +50,6 @@
     box-shadow: 0 2px 6px rgba(38, 74, 54, .18);
   }
   .nav-button:hover, .nav-button:focus-visible { background: var(--action-hover); border-color: var(--action-hover); }
-  .scroll-controls { display: flex; gap: 6px; }
   button {
     min-width: 40px;
     min-height: 36px;
@@ -87,18 +78,21 @@
     scrollbar-color: #9aac9f #edf1ec;
   }
   #family-graph { display: block; }
+  .pannable { cursor: grab; user-select: none; -webkit-user-select: none; }
+  .pannable.dragging, .pannable.dragging .person-node { cursor: grabbing; }
   .edge { fill: none; stroke: var(--edge); stroke-width: 1.8; }
   .marriage-edge { fill: none; stroke: #718e79; stroke-width: 2.4; }
   .person-node rect { fill: #eaf1e9; stroke: #a9bfad; stroke-width: 1.4; rx: 9; }
   .person-node text { fill: #284936; text-anchor: middle; font-size: 11px; font-weight: 600; }
   .person-node .person-year { fill: #62756a; font-size: 10px; font-weight: 400; }
+  .person-node .person-maiden { fill: #4f6a58; font-size: 10px; font-weight: 400; font-style: italic; }
   .marriage-year { fill: var(--action); font-size: 9px; font-weight: 700; }
   .union-node circle { fill: var(--action); stroke: var(--card); stroke-width: 2; }
   .person-node { cursor: pointer; }
   .person-node:hover rect, .person-node:focus rect { fill: #d5e4d8; stroke: #355b45; }
   .person-node:focus { outline: none; }
   .person-node.current rect { fill: var(--action); stroke: #264a36; }
-  .person-node.current text, .person-node.current .person-year { fill: white; }
+  .person-node.current text, .person-node.current .person-year, .person-node.current .person-maiden { fill: white; }
   #person-details { margin-top: 14px; }
   .details-card {
     padding: 16px 18px;
@@ -166,14 +160,13 @@
     header { padding: 0 0 4mm; background: none; border: 0; }
     h1 { font-size: 20pt; }
     main { width: 100%; padding: 0; }
-    .toolbar, #status, .page-footer, #person-details, .header-actions { display: none !important; }
+    .page-footer, #status, #person-details, .header-actions { display: none !important; }
     .graph-frame { overflow: visible; max-height: none; min-height: 0; padding: 0; border: 0; }
     #family-graph { width: 100%; height: auto; }
   }
   @media (max-width: 560px) {
     main { padding: 12px; }
     .graph-frame { padding: 8px; }
-    .toolbar { align-items: flex-start; }
   }
 </style>
 </head>
@@ -185,12 +178,6 @@
   </nav>
 </header>
 <main>
-  <div class="toolbar">
-    <div class="scroll-controls" aria-label="Przewijanie grafu">
-      <button id="scroll-left" type="button" aria-label="Przewiń graf w lewo" title="Przewiń w lewo">←</button>
-      <button id="scroll-right" type="button" aria-label="Przewiń graf w prawo" title="Przewiń w prawo">→</button>
-    </div>
-  </div>
   <p id="status" role="status">Wczytywanie danych…</p>
   <div class="graph-frame" tabindex="0" role="region" aria-label="Pełny graf rodziny, przewijany poziomo">
     <svg id="family-graph" role="img" aria-label="Pełny graf osób i rodzin"></svg>
@@ -199,14 +186,14 @@
 </main>
 <footer class="page-footer">
   <nav class="footer-actions" aria-label="Dodatkowe widoki">
-    <a class="print-button" href="./dokumenty.html">Dokumenty</a>
+    <a class="print-button" href="./dokumenty.html?z=cale-drzewo">Dokumenty</a>
     <button id="print-tree" class="print-button" type="button">Drukuj</button>
   </nav>
   <small class="copyright"><a href="mailto:dkuropka@gmail.com">©Dominik</a></small>
 </footer>
 <script src="./lib/sql-wasm.js"></script>
 <script src="./drzewo-db.js?v=4"></script>
-<script src="./drzewo-uklad.js?v=3"></script>
+<script src="./drzewo-uklad.js?v=4"></script>
 <script>
   "use strict";
 
@@ -308,7 +295,7 @@
       const roots = data.families
         .filter(root => root.partners?.[0])
         .map(root => ({ person: root.partners[0], branches: [root] }));
-      const { width, height, firstRootCenter } = DrzewoUklad.render(svg, roots, { onPerson: makeSelectable, compact: true, cardWidth: 76 });
+      const { width, height, firstRootCenter } = DrzewoUklad.render(svg, roots, { onPerson: makeSelectable, compact: true, cardWidth: 76, maidenLine: true });
       // Strona PDF dopasowana proporcjami do grafu: cały graf na jednej stronie, w wektorze.
       const pageWidthMm = 420;
       const pageHeightMm = Math.ceil(pageWidthMm * (height + 90) / width) + 12;
@@ -321,12 +308,7 @@
     }
   }
 
-  document.getElementById("scroll-left").addEventListener("click", () => {
-    frame.scrollBy({ left: -Math.max(260, frame.clientWidth * 0.75), behavior: "smooth" });
-  });
-  document.getElementById("scroll-right").addEventListener("click", () => {
-    frame.scrollBy({ left: Math.max(260, frame.clientWidth * 0.75), behavior: "smooth" });
-  });
+  DrzewoUklad.enablePan(frame);
   document.getElementById("print-tree").addEventListener("click", () => window.print());
   loadGraph();
 </script>

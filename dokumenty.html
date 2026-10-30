@@ -24,12 +24,12 @@
     font: 15px/1.5 system-ui, "Segoe UI", sans-serif;
   }
   header {
-    padding: 28px 18px 22px;
+    padding: 26px 18px 20px;
     text-align: center;
     background: linear-gradient(145deg, #f8f6ed, #eaf1e9);
     border-bottom: 1px solid var(--line);
   }
-  h1 { margin: 0; font: 600 clamp(26px, 5vw, 40px)/1.15 Georgia, serif; }
+  h1 { margin: 0; font: 600 clamp(25px, 4vw, 38px)/1.15 Georgia, serif; }
   main { width: min(760px, 100%); margin: 0 auto; padding: 20px 18px 40px; }
   .panel {
     padding: 18px;
@@ -60,7 +60,6 @@
   }
   .message { margin: 12px 0 0; color: var(--muted); }
   .error { color: #9c2f25; }
-  .notice { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
   #document-list { display: grid; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none; }
   #document-list a {
     display: block;
@@ -73,18 +72,35 @@
     text-decoration: none;
   }
   #document-list a:hover { color: white; background: var(--action-hover); }
-  .back { display: inline-block; margin-bottom: 14px; color: var(--action); }
+  .header-actions { display: flex; justify-content: center; margin-top: 18px; }
+  .nav-button {
+    display: inline-block;
+    padding: 10px 22px;
+    color: white;
+    background: var(--action);
+    border: 1px solid var(--action);
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.45;
+    text-decoration: none;
+    box-shadow: 0 2px 6px rgba(38, 74, 54, .18);
+  }
+  .nav-button:hover, .nav-button:focus-visible { color: white; background: var(--action-hover); border-color: var(--action-hover); }
   footer { padding: 0 18px 12px; color: var(--muted); font-size: 11px; text-align: right; }
   footer a { color: inherit; text-decoration: none; }
 </style>
 </head>
 <body>
-<header><h1>Dokumenty rodzinne</h1></header>
+<header>
+  <h1>Dokumenty rodzinne</h1>
+  <nav class="header-actions" aria-label="Powrót">
+    <a id="back-link" class="nav-button" href="./index.html">Rodziny</a>
+  </nav>
+</header>
 <main>
-  <a class="back" href="./index.html">← Powrót do drzewa</a>
   <section class="panel" aria-labelledby="access-title">
     <h2 id="access-title">Dostęp do dokumentów</h2>
-    <p class="notice">Hasło ukrywa listę na tej stronie, ale same pliki są publiczne i mogą być otwarte bezpośrednio.</p>
     <form id="password-form">
       <label for="password">Wpisz hasło</label>
       <input id="password" type="password" autocomplete="current-password" required>
@@ -97,6 +113,15 @@
 <footer><a href="mailto:dkuropka@gmail.com">©Dominik</a></footer>
 <script>
   "use strict";
+
+  // Powrót na stronę, z której otwarto dokumenty (parametr ?z=… albo poprzednia strona).
+  const backLink = document.getElementById("back-link");
+  const source = new URLSearchParams(location.search).get("z")
+    || (/cale-drzewo\.html/.test(document.referrer) ? "cale-drzewo" : "index");
+  if (source === "cale-drzewo") {
+    backLink.href = "./cale-drzewo.html";
+    backLink.textContent = "Całe drzewo";
+  }
 
   const passwordForm = document.getElementById("password-form");
   const passwordInput = document.getElementById("password");
