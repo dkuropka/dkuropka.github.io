@@ -31,7 +31,7 @@
     border-bottom: 1px solid var(--line);
   }
   h1 { margin: 0; font: 600 clamp(25px, 4vw, 38px)/1.15 Georgia, serif; }
-  main { width: min(1200px, 100%); margin: 0 auto; padding: 18px; }
+  main { width: 100%; margin: 0 auto; padding: 18px; }
   .header-actions {
     display: flex;
     justify-content: center;
@@ -68,6 +68,9 @@
     outline-offset: 3px;
   }
   .graph-frame {
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 auto;
     overflow-x: auto;
     overflow-y: hidden;
     padding: 12px;
@@ -93,7 +96,7 @@
   .person-node:focus { outline: none; }
   .person-node.current rect { fill: var(--action); stroke: #264a36; }
   .person-node.current text, .person-node.current .person-year, .person-node.current .person-maiden { fill: white; }
-  #person-details { margin-top: 14px; }
+  #person-details { width: min(1164px, 100%); margin: 14px auto 0; }
   .details-card {
     padding: 16px 18px;
     background: var(--card);
@@ -161,7 +164,7 @@
     h1 { font-size: 20pt; }
     main { width: 100%; padding: 0; }
     .page-footer, #status, #person-details, .header-actions { display: none !important; }
-    .graph-frame { overflow: visible; max-height: none; min-height: 0; padding: 0; border: 0; }
+    .graph-frame { width: 100%; overflow: visible; max-height: none; min-height: 0; padding: 0; border: 0; }
     #family-graph { width: 100%; height: auto; }
   }
   @media (max-width: 560px) {
