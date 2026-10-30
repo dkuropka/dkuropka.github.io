@@ -17,6 +17,7 @@
     --action-hover: #264a36;
   }
   * { box-sizing: border-box; }
+  html { scrollbar-gutter: stable; }
   body {
     margin: 0;
     color: var(--ink);
@@ -72,30 +73,47 @@
     text-decoration: none;
   }
   #document-list a:hover { color: white; background: var(--action-hover); }
-  .header-actions { display: flex; justify-content: center; margin-top: 18px; }
-  .nav-button {
-    display: inline-block;
-    padding: 10px 22px;
-    color: white;
-    background: var(--action);
-    border: 1px solid var(--action);
-    border-radius: 10px;
-    font-size: 15px;
-    font-weight: 600;
-    line-height: 1.45;
-    text-decoration: none;
-    box-shadow: 0 2px 6px rgba(38, 74, 54, .18);
-  }
-  .nav-button:hover, .nav-button:focus-visible { color: white; background: var(--action-hover); border-color: var(--action-hover); }
   footer { padding: 0 18px 12px; color: var(--muted); font-size: 11px; text-align: right; }
   footer a { color: inherit; text-decoration: none; }
-</style>
+  .header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 18px;
+  }
+  .nav-button {
+    display: inline-block;
+    min-width: 120px;
+    padding: 10px 20px;
+    color: var(--action);
+    background: #e1ebe2;
+    border: 1px solid #b9cbbd;
+    border-radius: 10px;
+    font: 600 15px/1.45 system-ui, "Segoe UI", sans-serif;
+    text-align: center;
+    text-decoration: none;
+  }
+  .nav-button:hover, .nav-button:focus-visible { color: white; background: var(--action-hover); border-color: var(--action-hover); }
+  .nav-button:focus-visible { outline: 3px solid #d59a50; outline-offset: 3px; }
+  .nav-button[aria-current="page"] {
+    color: white;
+    background: var(--action);
+    border-color: #264a36;
+    box-shadow: 0 2px 6px rgba(38, 74, 54, .18);
+    cursor: default;
+  }
+  @media (max-width: 420px) {
+    .nav-button { min-width: 0; padding: 9px 13px; font-size: 14px; }
+  }</style>
 </head>
 <body>
 <header>
-  <h1>Dokumenty rodzinne</h1>
-  <nav class="header-actions" aria-label="Powrót">
-    <a id="back-link" class="nav-button" href="./index.html">Rodziny</a>
+  <h1>Rodzina Kuropków</h1>
+  <nav class="header-actions" aria-label="Widoki strony">
+    <a class="nav-button" href="./index.html">Rodziny</a>
+    <a class="nav-button" href="./cale-drzewo.html">Całe drzewo</a>
+    <a class="nav-button" href="./dokumenty.html" aria-current="page">Dokumenty</a>
   </nav>
 </header>
 <main>
@@ -113,15 +131,6 @@
 <footer><a href="mailto:dkuropka@gmail.com">©Dominik</a></footer>
 <script>
   "use strict";
-
-  // Powrót na stronę, z której otwarto dokumenty (parametr ?z=… albo poprzednia strona).
-  const backLink = document.getElementById("back-link");
-  const source = new URLSearchParams(location.search).get("z")
-    || (/cale-drzewo\.html/.test(document.referrer) ? "cale-drzewo" : "index");
-  if (source === "cale-drzewo") {
-    backLink.href = "./cale-drzewo.html";
-    backLink.textContent = "Całe drzewo";
-  }
 
   const passwordForm = document.getElementById("password-form");
   const passwordInput = document.getElementById("password");

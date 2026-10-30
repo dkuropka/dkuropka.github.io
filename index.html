@@ -19,6 +19,7 @@
     --action-hover: #264a36;
   }
   * { box-sizing: border-box; }
+  html { scrollbar-gutter: stable; }
   body {
     margin: 0;
     color: var(--ink);
@@ -155,31 +156,6 @@
     cursor: pointer;
   }
   .footer-button:hover, .footer-button:focus-visible { color: white; background: var(--action-hover); border-color: var(--action-hover); }
-  .header-actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 18px;
-  }
-  .documents-button {
-    display: inline-block;
-    padding: 10px 22px;
-    color: white;
-    background: var(--action);
-    border: 1px solid var(--action);
-    border-radius: 10px;
-    font-size: 15px;
-    font-weight: 600;
-    line-height: 1.45;
-    text-decoration: none;
-    box-shadow: 0 2px 6px rgba(38, 74, 54, .18);
-  }
-  .documents-button:hover, .documents-button:focus-visible {
-    color: white;
-    background: var(--action-hover);
-    border-color: var(--action-hover);
-  }
   .map-scroll {
     overflow-x: auto;
     overflow-y: hidden;
@@ -231,13 +207,45 @@
     .family-body { padding: 0 12px 12px; }
     .children { grid-template-columns: 1fr; }
   }
-</style>
+  .header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 18px;
+  }
+  .nav-button {
+    display: inline-block;
+    min-width: 120px;
+    padding: 10px 20px;
+    color: var(--action);
+    background: #e1ebe2;
+    border: 1px solid #b9cbbd;
+    border-radius: 10px;
+    font: 600 15px/1.45 system-ui, "Segoe UI", sans-serif;
+    text-align: center;
+    text-decoration: none;
+  }
+  .nav-button:hover, .nav-button:focus-visible { color: white; background: var(--action-hover); border-color: var(--action-hover); }
+  .nav-button:focus-visible { outline: 3px solid #d59a50; outline-offset: 3px; }
+  .nav-button[aria-current="page"] {
+    color: white;
+    background: var(--action);
+    border-color: #264a36;
+    box-shadow: 0 2px 6px rgba(38, 74, 54, .18);
+    cursor: default;
+  }
+  @media (max-width: 420px) {
+    .nav-button { min-width: 0; padding: 9px 13px; font-size: 14px; }
+  }</style>
 </head>
 <body>
 <header>
   <h1>Rodzina Kuropków</h1>
-  <nav class="header-actions" aria-label="Przejście do innego widoku">
-    <a class="documents-button" href="./cale-drzewo.html">Całe drzewo</a>
+  <nav class="header-actions" aria-label="Widoki strony">
+    <a class="nav-button" href="./index.html" aria-current="page">Rodziny</a>
+    <a class="nav-button" href="./cale-drzewo.html">Całe drzewo</a>
+    <a class="nav-button" href="./dokumenty.html">Dokumenty</a>
   </nav>
 </header>
 <main>
@@ -250,7 +258,6 @@
 </main>
 <footer class="page-footer">
   <nav class="footer-actions" aria-label="Dodatkowe funkcje">
-    <a class="footer-button" href="./dokumenty.html?z=index">Dokumenty</a>
     <button class="footer-button" type="button" onclick="window.print()">Drukuj</button>
   </nav>
   <small class="copyright"><a href="mailto:dkuropka@gmail.com">©Dominik</a></small>
