@@ -152,16 +152,22 @@
       const years = [];
       if (person.birth) years.push(`* ${yearText(person.birth)}`);
       if (person.death) years.push(`† ${yearText(person.death)}`);
-      // Dodatkowa linia z nazwiskiem rodowym; karty bez niego mają treść wyśrodkowaną w pionie.
+      // Tylko istniejące linie, ułożone jedna pod drugą i wyśrodkowane w pionie karty.
       const maiden = showMaiden && person.maiden && person.maiden !== person.surname ? person.maiden : "";
-      const shiftY = showMaiden && !maiden ? maidenLineHeight / 2 : 0;
-      [
-        [given, 16 + shiftY, "person-name"],
-        [surname, 30 + shiftY, "person-name"],
-        [maiden && `z d. ${maiden}`, 43, "person-maiden"],
-        [years.join(compact ? " " : "  "), 45 + shiftY + (maiden ? maidenLineHeight : 0), "person-year"]
-      ].forEach(([content, dy, cls]) => {
-        if (!content) return;
+      const lines = [
+        [given, 0, "person-name"],
+        [surname, 14, "person-name"],
+        [maiden && `z d. ${maiden}`, maidenLineHeight, "person-maiden"],
+        [years.join(compact ? " " : "  "), 15, "person-year"]
+      ].filter(([content]) => content);
+      let offset = 0;
+      const placed = lines.map(([content, gap, cls], index) => {
+        if (index) offset += gap;
+        return [content, offset, cls];
+      });
+      const top = cardHeight / 2 + 4.5 - offset / 2;
+      placed.forEach(([content, lineOffset, cls]) => {
+        const dy = top + lineOffset;
         const text = makeSvgElement("text", { x: centerX, y: y + dy, class: cls });
         text.textContent = content;
         group.appendChild(text);
