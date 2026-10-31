@@ -79,6 +79,7 @@
   .person-name { display: block; font-weight: 650; }
   .person-role { display: block; margin-top: 2px; color: var(--action); font-size: 12px; font-weight: 600; }
   .person-dates { display: block; margin-top: 2px; color: var(--muted); font-size: 13px; }
+  .person-source { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; font-style: italic; line-height: 1.35; }
   .marriage {
     margin: 8px 0 0;
     color: var(--muted);
@@ -297,7 +298,7 @@
   <small class="copyright"><a href="mailto:dkuropka@gmail.com">©Dominik</a></small>
 </footer>
 <script src="./lib/sql-wasm.js"></script>
-<script src="./drzewo-db.js?v=5"></script>
+<script src="./drzewo-db.js?v=6"></script>
 <script src="./drzewo-uklad.js?v=5"></script>
 <script>
   "use strict";
@@ -328,7 +329,14 @@
     if (person.birth) dates.push(`ur. ${escapeHtml(person.death ? person.birth : birthYear(person.birth))}${person.birthPlace ? `, ${escapeHtml(person.birthPlace)}` : ""}`);
     if (person.death) dates.push(`zm. ${escapeHtml(person.death)}${person.deathPlace ? `, ${escapeHtml(person.deathPlace)}` : ""}`);
     if (person.burial) dates.push(`grób: ${escapeHtml(person.burial)}`);
-    return `<div class="person"><span class="person-name">${name}</span>${relationship}${maiden}${parents}${dates.length ? `<span class="person-dates">${dates.join(" · ")}</span>` : ""}</div>`;
+    return `<div class="person"><span class="person-name">${name}</span>${relationship}${maiden}${parents}${dates.length ? `<span class="person-dates">${dates.join(" · ")}</span>` : ""}${sourcesMarkup(person)}</div>`;
+  }
+
+  function sourcesMarkup(person) {
+    const items = [];
+    if (person.birthSource) items.push(`ur.: ${escapeHtml(person.birthSource)}`);
+    if (person.deathSource) items.push(`zm.: ${escapeHtml(person.deathSource)}`);
+    return items.length ? `<span class="person-source">Źródła — ${items.join(" · ")}</span>` : "";
   }
 
   function birthYear(value) {
@@ -358,7 +366,7 @@
       const family = familyIndex.find(entry => entry.family === other);
       if (family) links.push(`<button class="family-link" type="button" data-family="${family.id}">Rodzina: ${escapeHtml(other.name)}</button>`);
     });
-    return `<div class="child"><span class="person-name">${escapeHtml(child.name)}</span>${relationship}${parentMarkup}${child.maiden ? `<span class="person-dates">z d. ${escapeHtml(child.maiden)}</span>` : ""}${dates.length ? `<span class="person-dates">${dates.join(" · ")}</span>` : ""}${links.join("")}</div>`;
+    return `<div class="child"><span class="person-name">${escapeHtml(child.name)}</span>${relationship}${parentMarkup}${child.maiden ? `<span class="person-dates">z d. ${escapeHtml(child.maiden)}</span>` : ""}${dates.length ? `<span class="person-dates">${dates.join(" · ")}</span>` : ""}${sourcesMarkup(child)}${links.join("")}</div>`;
   }
 
   function renderFamily(id) {
@@ -370,7 +378,7 @@
     const children = family.children || [];
     const title = family.name || partners.map(person => person.name).join(" i ");
     const marriagePlace = family.marriagePlace && !family.marriage?.includes(family.marriagePlace) ? ` · ${escapeHtml(family.marriagePlace)}` : "";
-    tree.innerHTML = `<article class="family-view"><div class="family-heading"><h2>${escapeHtml(title)}</h2>${family.marriage ? `<p>${escapeHtml(family.marriage)}${marriagePlace}</p>` : ""}</div><div class="family-body"><div class="couple">${partners.map((person, index) => personMarkup(person, partners.length === 2 ? partners[1 - index] : null)).join("")}</div>${children.length ? `<h3 class="children-heading">Dzieci (${children.length})</h3><div class="children">${children.map(child => childMarkup(child, partners)).join("")}</div>` : ""}</div></article>`;
+    tree.innerHTML = `<article class="family-view"><div class="family-heading"><h2>${escapeHtml(title)}</h2>${family.marriage ? `<p>${escapeHtml(family.marriage)}${marriagePlace}</p>` : ""}${family.marriageSource ? `<p class="person-source">Źródło ślubu: ${escapeHtml(family.marriageSource)}</p>` : ""}</div><div class="family-body"><div class="couple">${partners.map((person, index) => personMarkup(person, partners.length === 2 ? partners[1 - index] : null)).join("")}</div>${children.length ? `<h3 class="children-heading">Dzieci (${children.length})</h3><div class="children">${children.map(child => childMarkup(child, partners)).join("")}</div>` : ""}</div></article>`;
     tree.querySelectorAll("[data-family]").forEach(button => button.addEventListener("click", () => renderFamily(button.dataset.family)));
     highlightOnMap(id);
   }

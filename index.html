@@ -101,6 +101,7 @@
   .details-box { padding: 10px 12px; background: #f8f9f5; border: 1px solid #e6ebe5; border-radius: 10px; }
   .details-box h3 { margin: 0 0 4px; color: var(--action); font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: .03em; }
   .details-box p { margin: 2px 0; }
+  .details-box .source { margin: 0 0 6px; color: var(--muted); font-size: 12px; line-height: 1.35; }
   .person-link {
     min-width: 0;
     min-height: 0;
@@ -240,7 +241,7 @@
   <small class="copyright"><a href="mailto:dkuropka@gmail.com">©Dominik</a></small>
 </footer>
 <script src="./lib/sql-wasm.js"></script>
-<script src="./drzewo-db.js?v=5"></script>
+<script src="./drzewo-db.js?v=6"></script>
 <script src="./drzewo-uklad.js?v=5"></script>
 <script>
   "use strict";
@@ -280,7 +281,7 @@
     const marriages = unions.map(union => {
       const spouse = union.partnerIds.filter(id => id !== person.id).map(id => personLink(data.people.get(id))).join(", ");
       const when = [union.marriageDate && `ślub ${escapeHtml(union.marriageDate)}`, union.marriagePlace && !union.marriageDate.includes(union.marriagePlace) && escapeHtml(union.marriagePlace)].filter(Boolean).join(", ");
-      return `<p>${spouse || "<span class=\"muted\">partner nieznany</span>"}${when ? `<br><span class="muted">${when}</span>` : ""}</p>`;
+      return `<p>${spouse || "<span class=\"muted\">partner nieznany</span>"}${when ? `<br><span class="muted">${when}</span>` : ""}${union.marriageSource ? `<br><span class="source">źródło: ${escapeHtml(union.marriageSource)}</span>` : ""}</p>`;
     }).join("");
     const children = unions.map(union => {
       if (!union.childIds.length) return "";
@@ -290,7 +291,9 @@
     }).join("");
     const life = [
       person.birth ? `<p>ur. ${dateLine(person.birth, person.birthPlace)}</p>` : "",
+      person.birthSource ? `<p class="source">źródło: ${escapeHtml(person.birthSource)}</p>` : "",
       person.death ? `<p>zm. ${dateLine(person.death, person.deathPlace)}</p>` : "",
+      person.deathSource ? `<p class="source">źródło: ${escapeHtml(person.deathSource)}</p>` : "",
       person.burial ? `<p>grób: ${escapeHtml(person.burial)}</p>` : ""
     ].join("") || `<p class="muted">daty nieznane</p>`;
     details.innerHTML = `<div class="details-card">

@@ -36,10 +36,21 @@
     ].filter(Boolean).join(" ");
   }
 
+  /* Źródła pokazujemy tylko dla osób zmarłych: z datą zgonu albo urodzonych przed 1926 r. */
+  function isDeceased(row) {
+    if (row.data_zgonu) return true;
+    const year = Number((String(row.data_urodzenia || "").match(/\d{4}/) || [])[0]);
+    return year > 0 && year < 1926;
+  }
+
   function buildModel(personRows, unionRows, settingRows) {
     const people = new Map();
     personRows.forEach(row => {
+      const deceased = isDeceased(row);
       people.set(row.id, {
+        deceased,
+        birthSource: (deceased && row.zrodlo_urodzenia) || undefined,
+        deathSource: (deceased && row.zrodlo_zgonu) || undefined,
         id: row.id,
         name: fullName(row),
         given: row.imie,
@@ -73,6 +84,8 @@
         note: row.uwagi || undefined,
         childIds: []
       };
+      const allDeceased = union.partnerIds.length > 0 && union.partnerIds.every(id => people.get(id).deceased);
+      union.marriageSource = (allDeceased && row.zrodlo_slubu) || undefined;
       unions.set(row.id, union);
       union.partnerIds.forEach(id => people.get(id).unions.push(union.id));
     });
@@ -116,6 +129,7 @@
         name: union.title,
         marriage: union.marriageDate ? `ślub ${union.marriageDate}` : undefined,
         marriagePlace: union.marriagePlace || undefined,
+        marriageSource: union.marriageSource,
         partners: partnerIds.map(id => people.get(id)),
         children: union.childIds.map(id => people.get(id))
       };
