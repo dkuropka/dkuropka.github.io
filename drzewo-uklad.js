@@ -78,6 +78,24 @@
 
   /* Układ względny: osoba na x = 0, pierwszy małżonek po prawej, drugi po lewej, kolejni dalej po prawej.
      Dzieci każdego związku tworzą blok pod kropką ślubu; poddrzewa są dosuwane do siebie poziomami. */
+  let straightLine = false;
+  let mainLineIds = new Set();
+
+  /* Dziecko kontynuujące główną (pionową) linię — tylko osoby z listy mainLineIds. */
+  function mainChildOf(children) {
+    return children.find(child => mainLineIds.has(child.sub.person.id)) || null;
+  }
+
+  /* Największe przesunięcie, przy którym kontur source leży na lewo od target na każdym wspólnym poziomie. */
+  function maximalShiftLeft(target, source, gap) {
+    let shift = Infinity;
+    source.forEach(([, max], level) => {
+      const placed = target.get(level);
+      if (placed) shift = Math.min(shift, placed[0] - gap - max);
+    });
+    return Number.isFinite(shift) ? shift : 0;
+  }
+
   function layoutUnit(person, branches, level, branchesOf, underPerson) {
     const step = cardWidth + coupleGap;
     const unions = branches.map((family, index) => {
@@ -102,28 +120,68 @@
     const below = new Map();
     unions.forEach((union, order) => {
       union.order = order;
-      if (!union.children.length) return;
-      const block = new Map();
+      union.block = new Map();
       union.children.forEach(child => {
-        const shift = minimalShift(block, child.sub.contour, siblingGap);
+        const shift = minimalShift(union.block, child.sub.contour, siblingGap);
         child.shift = Number.isFinite(shift) ? shift : 0;
-        mergeContour(block, child.sub.contour, child.shift);
+        mergeContour(union.block, child.sub.contour, child.shift);
       });
-      const first = union.children[0].shift;
-      const last = union.children[union.children.length - 1].shift + cardWidth;
-      const anchor = underPerson && union.index === 0 ? cardWidth / 2 : union.dotX;
-      const offset = Math.max(anchor - (first + last) / 2, minimalShift(below, block, siblingGap));
-      union.children.forEach(child => { child.shift += offset; });
-      mergeContour(below, block, offset);
-      extendContour(below, level + 1, union.dotX, union.dotX);
     });
+    const place = (union, offset) => {
+      union.children.forEach(child => { child.shift += offset; });
+      mergeContour(below, union.block, offset);
+      extendContour(below, level + 1, union.dotX, union.dotX);
+    };
+    const withChildren = unions.filter(union => union.children.length);
+    const main = straightLine && mainLineIds.has(person.id) ? mainChildOf(withChildren.flatMap(union => union.children)) : null;
+    if (main) {
+      // Główna linia w pionie: wybrane dziecko dokładnie pod rodzicem (x = 0); pozostałe bloki dzieci po bokach.
+      const mainUnion = withChildren.find(union => union.children.includes(main));
+      const at = withChildren.indexOf(mainUnion);
+      place(mainUnion, -main.shift);
+      withChildren.slice(at + 1).forEach(union => place(union, minimalShift(below, union.block, siblingGap)));
+      withChildren.slice(0, at).reverse().forEach(union => place(union, maximalShiftLeft(below, union.block, siblingGap)));
+    } else {
+      withChildren.forEach(union => {
+        const first = union.children[0].shift;
+        const last = union.children[union.children.length - 1].shift + cardWidth;
+        const anchor = underPerson && union.index === 0 ? cardWidth / 2 : union.dotX;
+        place(union, Math.max(anchor - (first + last) / 2, minimalShift(below, union.block, siblingGap)));
+      });
+    }
     mergeContour(contour, below, 0);
     return { person, level, unions, contour };
+  }
+
+  /* Wysokości poziomych linii do dzieci: jeśli linia jednego związku przechodzi pod kropką innego,
+     linia tego drugiego biegnie wyżej — pionowa kreska od kropki nie przecina wtedy cudzej linii. */
+  function busLevelsOf(unions) {
+    const withChildren = unions.filter(union => union.children.length);
+    const spans = new Map(withChildren.map(union => {
+      const centers = union.children.map(child => child.shift + cardWidth / 2);
+      return [union, [Math.min(union.dotX, ...centers), Math.max(union.dotX, ...centers)]];
+    }));
+    const levels = new Map(withChildren.map(union => [union, 0]));
+    for (let pass = 0; pass < withChildren.length; pass++) {
+      withChildren.forEach(a => withChildren.forEach(b => {
+        if (a === b) return;
+        const [left, right] = spans.get(a);
+        const [bLeft, bRight] = spans.get(b);
+        const inside = (x, l, r) => x > l && x < r;
+        const overlap = bLeft < right && bRight > left;
+        const above = inside(b.dotX, left, right)
+          || (overlap && a.order < b.order && !inside(a.dotX, bLeft, bRight));
+        if (above && levels.get(b) <= levels.get(a)) levels.set(b, levels.get(a) + 1);
+      }));
+    }
+    return levels;
   }
 
   function render(svg, roots, options = {}) {
     const branchesOf = options.branchesOf || defaultBranchesOf;
     compact = Boolean(options.compact);
+    straightLine = Boolean(options.straightLine);
+    mainLineIds = new Set(options.mainLineIds || []);
     cardWidth = options.cardWidth || defaultCardWidth;
     showMaiden = Boolean(options.maidenLine);
     cardHeight = defaultCardHeight + (showMaiden ? maidenLineHeight : 0);
@@ -199,6 +257,7 @@
       const centerY = y + cardHeight / 2;
       const ownFamily = unit.unions.find(union => union.index === 0)?.family;
       drawPerson(unit.person, offsetX, y, ownFamily);
+      const busLevels = busLevelsOf(unit.unions);
       unit.unions.forEach(union => {
         const dotX = offsetX + union.dotX;
         if (union.spouse) drawPerson(union.spouse, offsetX + union.spouseX, y, union.family);
@@ -212,7 +271,7 @@
         if (!union.children.length) return;
 
         const childTop = y + rowHeight;
-        const busY = childTop - 16 - 8 * union.order;
+        const busY = childTop - 16 - 8 * busLevels.get(union);
         const childCenters = union.children.map(child => offsetX + child.shift + cardWidth / 2);
         const left = Math.min(dotX, ...childCenters);
         const right = Math.max(dotX, ...childCenters);

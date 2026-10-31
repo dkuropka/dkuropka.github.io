@@ -242,7 +242,7 @@
 </footer>
 <script src="./lib/sql-wasm.js"></script>
 <script src="./drzewo-db.js?v=6"></script>
-<script src="./drzewo-uklad.js?v=5"></script>
+<script src="./drzewo-uklad.js?v=7"></script>
 <script>
   "use strict";
 
@@ -368,7 +368,9 @@
       const roots = data.families
         .filter(root => root.partners?.[0])
         .map(root => ({ person: root.partners[0], branches: [root] }));
-      const { width, height, firstRootCenter } = DrzewoUklad.render(svg, roots, { onPerson: makeSelectable, compact: true, cardWidth: 76, maidenLine: true });
+      const lineStart = Number(data.settings.linia_pionowa_do_osoby_id);
+      const mainLine = [lineStart, ...ancestorsOf(lineStart)];
+      const { width, height, firstRootCenter } = DrzewoUklad.render(svg, roots, { onPerson: makeSelectable, compact: true, cardWidth: 76, maidenLine: true, straightLine: true, mainLineIds: mainLine });
       // Strona PDF dopasowana proporcjami do grafu: cały graf na jednej stronie, w wektorze.
       const pageWidthMm = 420;
       const pageHeightMm = Math.ceil(pageWidthMm * (height + 90) / width) + 12;
