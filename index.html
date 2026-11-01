@@ -7,7 +7,7 @@
 <link rel="icon" href="./favicon.svg" type="image/svg+xml">
 <link rel="icon" href="./favicon-32.png" type="image/png" sizes="32x32">
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
-<title>Rodzina Kuropków — całe drzewo</title>
+<title>Drzewo — Rodzina Kuropków</title>
 <style>
   :root {
     color-scheme: light;
@@ -84,6 +84,8 @@
   .person-node.current text, .person-node.current .person-year, .person-node.current .person-maiden { fill: white; }
   .person-node.ancestor rect { fill: #b3cfba; stroke: #4f7a5d; }
   #person-details { width: min(1164px, 100%); margin: 14px auto 0; }
+  #person-details:empty { display: none; }
+  .graph-hint { position: sticky; left: 0; width: max-content; margin: 0 0 4px; color: var(--muted); font-size: 12px; }
   .details-card {
     padding: 16px 18px;
     background: var(--card);
@@ -151,7 +153,7 @@
     header { padding: 0 0 4mm; background: none; border: 0; }
     h1 { font-size: 20pt; }
     main { width: 100%; padding: 0; }
-    .page-footer, #status, #person-details, .header-actions { display: none !important; }
+    .page-footer, #status, #person-details, .header-actions, .graph-hint { display: none !important; }
     .graph-frame { width: 100%; overflow: visible; max-height: none; min-height: 0; padding: 0; border: 0; }
     #family-graph { width: 100%; height: auto; }
   }
@@ -222,7 +224,7 @@
 <header>
   <h1>Rodzina Kuropków</h1>
   <nav class="header-actions" aria-label="Widoki strony">
-    <a class="nav-button" href="./index.html" aria-current="page">Całe drzewo</a>
+    <a class="nav-button" href="./index.html" aria-current="page">Drzewo</a>
     <a class="nav-button" href="./rodziny.html">Rodziny</a>
     <a class="nav-button" href="./dokumenty.html">Dokumenty</a>
   </nav>
@@ -230,9 +232,10 @@
 <main>
   <p id="status" role="status">Wczytywanie danych…</p>
   <div class="graph-frame" tabindex="0" role="region" aria-label="Pełny graf rodziny, przewijany poziomo">
+    <p class="graph-hint">Wybierz osobę</p>
     <svg id="family-graph" role="img" aria-label="Pełny graf osób i rodzin"></svg>
   </div>
-  <section id="person-details" aria-live="polite"><div class="details-card"><p class="hint">Kliknij osobę na grafie, aby zobaczyć jej dane.</p></div></section>
+  <section id="person-details" aria-live="polite"></section>
 </main>
 <footer class="page-footer">
   <nav class="footer-actions" aria-label="Dodatkowe funkcje">
@@ -379,7 +382,7 @@
       status.hidden = true;
     } catch (error) {
       status.classList.add("error");
-      status.textContent = `Nie udało się wczytać pełnego drzewa: ${error.message}`;
+      status.textContent = `Nie udało się wczytać drzewa: ${error.message}`;
     }
   }
 
