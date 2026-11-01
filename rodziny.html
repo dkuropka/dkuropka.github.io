@@ -448,7 +448,6 @@
       .map(generation => data.familyByUnionId.get(generation.union.id))
       .filter(Boolean)
       .map((family, index) => ({ id: `family-${index}`, family }));
-    renderFamily(familyIndex[0].id);
     renderAncestorMap();
     DrzewoUklad.enablePan(document.querySelector(".map-scroll"));
   }
