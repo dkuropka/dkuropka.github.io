@@ -197,7 +197,7 @@
       const files = await response.json();
       if (!Array.isArray(files)) throw new Error("Nieprawidłowa odpowiedź z listą plików.");
       const documents = files
-        .filter(file => file.type === "file" && /\.(pdf|jpe?g|png)$/i.test(file.name))
+        .filter(file => file.type === "file" && /\.(pdf|jpe?g|png|xlsx?)$/i.test(file.name))
         .sort((left, right) => left.name.localeCompare(right.name, "pl"));
 
       documentList.replaceChildren();
@@ -205,7 +205,8 @@
         const item = document.createElement("li");
         const link = document.createElement("a");
         link.href = publicFolderUrl + file.name.split("/").map(encodeURIComponent).join("/");
-        link.target = "_blank";
+        if (/\.xlsx?$/i.test(file.name)) link.download = file.name;
+        else link.target = "_blank";
         link.rel = "noopener noreferrer";
         link.textContent = file.name;
         item.appendChild(link);
@@ -214,7 +215,7 @@
       documentList.hidden = false;
       message.textContent = documents.length
         ? `Znaleziono dokumentów: ${documents.length}. Lista jest pobierana na bieżąco z folderu doc.`
-        : "W folderze doc nie znaleziono plików PDF, JPG ani PNG.";
+        : "W folderze doc nie znaleziono plików PDF, JPG, PNG ani XLSX.";
     } catch (error) {
       passwordForm.hidden = false;
       message.classList.add("error");
