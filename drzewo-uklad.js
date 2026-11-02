@@ -153,6 +153,89 @@
     return { person, level, unions, contour };
   }
 
+  const busMargin = 12;
+
+  /* Pozycje bezwzględne: unit.x to x osoby; zapamiętuje rodzica i związek, z którego pochodzi dziecko. */
+  function assignPositions(unit, x, parentUnit, parentUnion, all) {
+    unit.x = x;
+    unit.parentUnit = parentUnit;
+    unit.parentUnion = parentUnion;
+    const spouseXs = unit.unions.map(union => union.spouseX);
+    unit.rowMin = Math.min(0, ...spouseXs);
+    unit.rowMax = Math.max(cardWidth, ...spouseXs.map(spouseX => spouseX + cardWidth));
+    all.push(unit);
+    unit.unions.forEach(union => union.children.forEach(child =>
+      assignPositions(child.sub, x + child.shift, unit, union, all)));
+  }
+
+  /* Zakres poziomej linii związku (od kropki do skrajnych dzieci). */
+  function busSpan(unit, union, delta = 0) {
+    const dot = unit.x + union.dotX + delta;
+    const centers = union.children.map(child => child.sub.x + cardWidth / 2);
+    return [Math.min(dot, ...centers), Math.max(dot, ...centers)];
+  }
+
+  /* Dociąganie: każda rodzina przesuwa się w stronę kropki ślubu swoich rodziców, dopóki nie natrafi
+     na sąsiednią kartę w tym samym rzędzie ani na poziomą linię innej rodziny pod sobą. */
+  function compactLayout(all, fixedIds) {
+    const byLevel = new Map();
+    all.forEach(unit => {
+      if (!byLevel.has(unit.level)) byLevel.set(unit.level, []);
+      byLevel.get(unit.level).push(unit);
+    });
+    const levels = [...byLevel.keys()].sort((a, b) => a - b);
+
+    function limitMove(unit, wanted) {
+      let delta = wanted;
+      const row = byLevel.get(unit.level).filter(other => other !== unit);
+      const left = unit.x + unit.rowMin;
+      const right = unit.x + unit.rowMax;
+      row.forEach(other => {
+        const otherLeft = other.x + other.rowMin;
+        const otherRight = other.x + other.rowMax;
+        if (delta < 0 && otherRight <= left) delta = Math.max(delta, otherRight + siblingGap - left);
+        if (delta > 0 && otherLeft >= right) delta = Math.min(delta, otherLeft - siblingGap - right);
+      });
+      const otherSpans = row.flatMap(other => other.unions.filter(union => union.children.length)
+        .map(union => busSpan(other, union)));
+      unit.unions.filter(union => union.children.length).forEach(union => {
+        const [start, end] = busSpan(unit, union);
+        const dot = unit.x + union.dotX;
+        otherSpans.forEach(([otherStart, otherEnd]) => {
+          if (delta < 0 && otherEnd <= start) delta = Math.max(delta, Math.min(otherEnd + busMargin, start) - dot);
+          if (delta > 0 && otherStart >= end) delta = Math.min(delta, Math.max(otherStart - busMargin, end) - dot);
+        });
+      });
+      return Math.sign(delta) === Math.sign(wanted) ? delta : 0;
+    }
+
+    for (let pass = 0; pass < 6; pass++) {
+      let changed = false;
+      levels.forEach(level => {
+        const families = new Map();
+        byLevel.get(level).forEach(unit => {
+          if (!unit.parentUnion || fixedIds.has(unit.person.id)) return;
+          if (!families.has(unit.parentUnion)) families.set(unit.parentUnion, []);
+          families.get(unit.parentUnion).push(unit);
+        });
+        families.forEach((kids, union) => {
+          const dot = kids[0].parentUnit.x + union.dotX;
+          const center = unit => unit.x + cardWidth / 2;
+          const rightSide = kids.filter(unit => center(unit) > dot).sort((a, b) => a.x - b.x);
+          const leftSide = kids.filter(unit => center(unit) < dot).sort((a, b) => b.x - a.x);
+          [...rightSide, ...leftSide].forEach(unit => {
+            const delta = limitMove(unit, dot - center(unit));
+            if (Math.abs(delta) > 0.5) {
+              unit.x += delta;
+              changed = true;
+            }
+          });
+        });
+      });
+      if (!changed) break;
+    }
+  }
+
   /* Wysokości poziomych linii do dzieci: jeśli linia jednego związku przechodzi pod kropką innego,
      linia tego drugiego biegnie wyżej — pionowa kreska od kropki nie przecina wtedy cudzej linii. */
   function busLevelsOf(unions) {
@@ -252,7 +335,9 @@
       if (options.onUnion) options.onUnion(node, family);
     }
 
-    function drawUnit(unit, offsetX, top) {
+    function drawUnit(unit, shiftX, top) {
+      const offsetX = unit.x + shiftX;
+      unit.unions.forEach(union => union.children.forEach(child => { child.shift = child.sub.x - unit.x; }));
       const y = top + unit.level * rowHeight;
       const centerY = y + cardHeight / 2;
       const ownFamily = unit.unions.find(union => union.index === 0)?.family;
@@ -277,7 +362,7 @@
         const right = Math.max(dotX, ...childCenters);
         edge(`M ${dotX} ${centerY + 6} V ${busY} M ${left} ${busY} H ${right}`);
         childCenters.forEach(x => edge(`M ${x} ${busY} V ${childTop}`));
-        union.children.forEach(child => drawUnit(child.sub, offsetX + child.shift, top));
+        union.children.forEach(child => drawUnit(child.sub, shiftX, top));
       });
     }
 
@@ -289,12 +374,14 @@
       unit.shift = Number.isFinite(shift) ? shift : 0;
       mergeContour(placed, unit.contour, unit.shift);
     });
-    const leftEdge = Math.min(...[...placed.values()].map(([min]) => min));
+    const all = [];
+    units.forEach(unit => assignPositions(unit, unit.shift, null, null, all));
+    if (options.compactRows !== false && !options.childrenUnderPerson) compactLayout(all, straightLine ? mainLineIds : new Set());
+    const leftEdge = Math.min(...all.map(unit => unit.x + unit.rowMin));
     let firstRootCenter = 0;
     units.forEach((unit, index) => {
-      const offsetX = unit.shift - leftEdge + padding;
-      if (index === 0) firstRootCenter = offsetX + cardWidth;
-      drawUnit(unit, offsetX, padding + 8);
+      if (index === 0) firstRootCenter = unit.x - leftEdge + padding + cardWidth;
+      drawUnit(unit, padding - leftEdge, padding + 8);
     });
     const width = maxRight + padding;
     const height = maxBottom + padding;
