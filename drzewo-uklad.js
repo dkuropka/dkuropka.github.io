@@ -273,7 +273,7 @@
     let maxBottom = 0;
 
     function edge(d, cls = "edge") {
-      svg.appendChild(makeSvgElement("path", { d, class: cls }));
+      return svg.appendChild(makeSvgElement("path", { d, class: cls }));
     }
 
     function drawPerson(person, x, y, family) {
@@ -347,10 +347,10 @@
         const dotX = offsetX + union.dotX;
         if (union.spouse) drawPerson(union.spouse, offsetX + union.spouseX, y, union.family);
         if (union.farAway) {
-          edge(`M ${offsetX + cardWidth - 14} ${y} V ${y - 8} H ${dotX} V ${centerY - 6}`, "marriage-edge");
-          edge(`M ${dotX} ${centerY} H ${dotX + coupleGap / 2}`, "marriage-edge");
+          edge(`M ${offsetX + cardWidth - 14} ${y} V ${y - 8} H ${dotX} V ${centerY - 6}`, "marriage-edge").dataset.union = union.family.unionId;
+          edge(`M ${dotX} ${centerY} H ${dotX + coupleGap / 2}`, "marriage-edge").dataset.union = union.family.unionId;
         } else {
-          edge(`M ${dotX - coupleGap / 2} ${centerY} H ${dotX + coupleGap / 2}`, "marriage-edge");
+          edge(`M ${dotX - coupleGap / 2} ${centerY} H ${dotX + coupleGap / 2}`, "marriage-edge").dataset.union = union.family.unionId;
         }
         drawUnion(union.family, dotX, centerY);
         if (!union.children.length) return;
@@ -362,6 +362,10 @@
         const right = Math.max(dotX, ...childCenters);
         edge(`M ${dotX} ${centerY + 6} V ${busY} M ${left} ${busY} H ${right}`);
         childCenters.forEach(x => edge(`M ${x} ${busY} V ${childTop}`));
+        // Ukryta ścieżka dziecko → kropka ślubu rodziców; widoczna przy podświetlaniu linii przodków.
+        union.children.forEach((child, i) => {
+          edge(`M ${dotX} ${centerY + 6} V ${busY} H ${childCenters[i]} V ${childTop}`, "lineage-edge").dataset.child = child.sub.person.id;
+        });
         union.children.forEach(child => drawUnit(child.sub, shiftX, top));
       });
     }

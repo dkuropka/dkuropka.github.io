@@ -227,6 +227,10 @@
   .person-node.male.map-link:hover rect { stroke: #a9cdf5; stroke-width: 3; }
   .person-node.female.map-link:hover rect { stroke: #f6b3d2; stroke-width: 3; }
   .person-node.male:focus rect, .person-node.female:focus rect { stroke-width: 3; }
+  /* Linia przodków wybranej osoby */
+  .lineage-edge { fill: none; stroke: none; }
+  .lineage-edge.active { stroke: #1b4e30; stroke-width: 3.5; stroke-linejoin: round; stroke-linecap: round; }
+  .marriage-edge.active { stroke: #1b4e30; stroke-width: 3.5; }
 </style>
 </head>
 <body>
@@ -254,7 +258,7 @@
 </footer>
 <script src="./lib/sql-wasm.js"></script>
 <script src="./drzewo-db.js?v=6"></script>
-<script src="./drzewo-uklad.js?v=9"></script>
+<script src="./drzewo-uklad.js?v=10"></script>
 <script>
   "use strict";
 
@@ -351,6 +355,13 @@
       card.classList.toggle("current", cardId === id);
       card.classList.toggle("ancestor", ancestors.has(cardId));
     });
+    const lineage = new Set([id, ...ancestors]);
+    const unionsOnPath = new Set([...lineage].map(personId => data.people.get(personId)?.parentUnionId).filter(Boolean));
+    svg.querySelectorAll(".lineage-edge").forEach(path => path.classList.toggle("active", lineage.has(Number(path.dataset.child))));
+    svg.querySelectorAll(".marriage-edge").forEach(path => path.classList.toggle("active", unionsOnPath.has(Number(path.dataset.union))));
+    // Podświetlone linie nad zwykłymi liniami; kropki ślubów nad nimi.
+    svg.querySelectorAll(".lineage-edge.active, .marriage-edge.active").forEach(path => svg.appendChild(path));
+    svg.querySelectorAll(".union-node").forEach(node => svg.appendChild(node));
     renderDetails(person);
     if (scrollTo === "details") details.scrollIntoView({ behavior: "smooth", block: "nearest" });
     if (scrollTo === "card") {
