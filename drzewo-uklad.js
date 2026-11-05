@@ -277,7 +277,7 @@
     }
 
     function drawPerson(person, x, y, family) {
-      const group = makeSvgElement("g", { class: "person-node" });
+      const group = makeSvgElement("g", { class: `person-node${person.sex ? ` ${person.sex}` : ""}` });
       const title = makeSvgElement("title", {});
       title.textContent = [
         person.name + (person.maiden ? ` (z d. ${person.maiden})` : ""),

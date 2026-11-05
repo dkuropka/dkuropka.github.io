@@ -273,7 +273,16 @@
     #ancestor-map .marriage-year { fill: var(--action); }
     .union-node circle { fill: var(--action); }
     .person-node.map-link:hover rect, .person-node.current rect { fill: var(--action); stroke: #1b4e30; }
-  }</style>
+  }
+  /* Płeć: niebieska ramka – mężczyźni, różowa – kobiety (kontrast ramki do tła karty ≥ 3:1). */
+  .person-node.male rect { stroke: #2f6fb3; stroke-width: 2.2; }
+  .person-node.female rect { stroke: #c2417f; stroke-width: 2.2; }
+  .person-node.male.current rect { stroke: #a9cdf5; stroke-width: 3; }
+  .person-node.female.current rect { stroke: #f6b3d2; stroke-width: 3; }
+  .person-node.male.map-link:hover rect { stroke: #a9cdf5; stroke-width: 3; }
+  .person-node.female.map-link:hover rect { stroke: #f6b3d2; stroke-width: 3; }
+  .person-node.male:focus rect, .person-node.female:focus rect { stroke-width: 3; }
+</style>
 </head>
 <body>
 <header>
@@ -301,7 +310,7 @@
 </footer>
 <script src="./lib/sql-wasm.js"></script>
 <script src="./drzewo-db.js?v=6"></script>
-<script src="./drzewo-uklad.js?v=8"></script>
+<script src="./drzewo-uklad.js?v=9"></script>
 <script>
   "use strict";
 
